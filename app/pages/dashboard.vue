@@ -114,11 +114,6 @@ function handleCreateTrader(data: { mode: 'mock' | 'live'; form: unknown }) {
   console.log('Creating trader:', data)
   // TODO: Implement API call to create trader
 }
-
-function openGlobalSettings() {
-  // TODO: Open global settings modal
-  console.log('Open global settings')
-}
 </script>
 
 <template>
@@ -141,10 +136,12 @@ function openGlobalSettings() {
         <div class="mt-4 flex md:ml-4 md:mt-0">
           <button
             type="button"
-            class="inline-flex items-center rounded-md bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-slate-200 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
-            @click="openGlobalSettings"
+            class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90"
+            style="background-color: #2563EB; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);"
+            @click="handleAddProfile"
           >
-            Global Settings
+            <span class="material-symbols-outlined text-lg">add</span>
+            Add New Profile
           </button>
         </div>
       </div>
@@ -160,7 +157,6 @@ function openGlobalSettings() {
           @delete="handleDelete"
           @settings="handleSettings"
         />
-        <AddProfileCard @click="handleAddProfile" />
       </div>
 
       <!-- Add Trader Dialog -->

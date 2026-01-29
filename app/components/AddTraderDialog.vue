@@ -71,6 +71,18 @@ watch(() => modelValue, (newVal) => {
   if (!newVal) {
     resetForm()
   }
+
+  // Lock/unlock body scroll
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = newVal ? 'hidden' : ''
+  }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+  }
 })
 </script>
 
@@ -86,7 +98,7 @@ watch(() => modelValue, (newVal) => {
     >
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
       >
         <!-- Backdrop -->
         <div
