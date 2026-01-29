@@ -1,172 +1,176 @@
 <script setup lang="ts">
-// Page meta
-definePageMeta({
-  layout: false,
-})
+import type { Portfolio } from '~/components/PortfolioCard.vue'
+import type { Execution } from '~/components/ExecutionsTable.vue'
 
 useSeoMeta({
-  title: 'PolyCopy - System Login',
-  description: 'Sign in to your PolyCopy portfolio automation system',
+  title: 'Dashboard - PolyCopy',
+  description: 'Manage your automated copy-trading portfolios',
 })
 
-// Form state
-const email = ref('')
-const password = ref('')
-const isLoading = ref(false)
+// Mock data for portfolios
+const portfolios = ref<Portfolio[]>([
+  {
+    id: '892A',
+    name: 'BigBlack',
+    description: 'Polymarket Whale Tracker',
+    mode: 'mock',
+    status: 'active',
+    isVerified: true,
+    balance: 14250.00,
+    positions: 5,
+    pnlAllTime: 3240.50,
+    unrealized: -120.00,
+  },
+  {
+    id: '22B1',
+    name: 'CryptoWiz',
+    description: 'Election Markets Strategy',
+    mode: 'live',
+    status: 'active',
+    isVerified: false,
+    balance: 5620.00,
+    positions: 12,
+    pnlAllTime: 890.25,
+    unrealized: 45.00,
+  },
+  {
+    id: '55C9',
+    name: 'AlphaSeeker',
+    description: 'Sports Betting Algo',
+    mode: 'live',
+    status: 'paused',
+    isVerified: false,
+    balance: 850.00,
+    positions: 0,
+    pnlAllTime: -150.00,
+    unrealized: 0,
+  },
+])
 
-// Form submission
-async function handleSubmit() {
-  isLoading.value = true
-  try {
-    // TODO: Implement actual login logic
-    console.log('Login attempt:', { email: email.value })
-    await navigateTo('/dashboard')
-  }
-  finally {
-    isLoading.value = false
+// Mock data for executions
+const executions = ref<Execution[]>([
+  {
+    id: '1',
+    profile: 'BigBlack',
+    profileMode: 'mock',
+    market: '2024 Election Winner',
+    action: 'buy-yes',
+    price: '45¢',
+    time: '2 mins ago',
+  },
+  {
+    id: '2',
+    profile: 'CryptoWiz',
+    profileMode: 'live',
+    market: 'Bitcoin > $45k Jan',
+    action: 'sell-no',
+    price: '82¢',
+    time: '15 mins ago',
+  },
+  {
+    id: '3',
+    profile: 'BigBlack',
+    profileMode: 'mock',
+    market: 'Fed Rate Cut March',
+    action: 'buy-yes',
+    price: '12¢',
+    time: '1 hour ago',
+  },
+])
+
+// Portfolio actions
+function handlePause(id: string) {
+  const portfolio = portfolios.value.find(p => p.id === id)
+  if (portfolio) {
+    portfolio.status = 'paused'
   }
 }
 
-// Wallet connection
-async function connectWallet() {
-  // TODO: Implement wallet connection
-  console.log('Connecting wallet...')
+function handleResume(id: string) {
+  const portfolio = portfolios.value.find(p => p.id === id)
+  if (portfolio) {
+    portfolio.status = 'active'
+  }
+}
+
+function handleDelete(id: string) {
+  // TODO: Add confirmation modal
+  portfolios.value = portfolios.value.filter(p => p.id !== id)
+}
+
+function handleSettings(id: string) {
+  // TODO: Open settings modal
+  console.log('Open settings for:', id)
+}
+
+// Dialog state
+const showAddTraderDialog = ref(false)
+
+function handleAddProfile() {
+  showAddTraderDialog.value = true
+}
+
+function handleCreateTrader(data: { mode: 'mock' | 'live'; form: unknown }) {
+  console.log('Creating trader:', data)
+  // TODO: Implement API call to create trader
 }
 </script>
 
 <template>
-  <div class="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
-    <!-- Background decorations -->
-    <div class="absolute inset-0 z-0">
-      <div class="absolute inset-0 bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-[#0B1121]" />
-      <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 dark:bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      <div class="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-400/10 dark:bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
-    </div>
+  <div class="bg-background-light dark:bg-background-dark min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300">
+    <!-- Navbar -->
+    <DashboardNavbar />
 
-    <!-- Login card -->
-    <div class="w-full max-w-[420px] z-10 relative">
-      <div class="bg-white dark:bg-card-dark rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700/60 p-8 sm:p-10">
-        <!-- Header -->
-        <div class="flex flex-col items-center mb-8">
-          <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-blue-50 dark:bg-primary/10 text-primary mb-5 ring-1 ring-blue-100 dark:ring-primary/20 shadow-sm">
-            <span class="material-symbols-outlined text-[32px]">query_stats</span>
-          </div>
-          <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            PolyCopy
-          </h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center">
-            Welcome back. Sign in to your portfolio.
+    <!-- Main content -->
+    <main class="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="md:flex md:items-center md:justify-between mb-8">
+        <div class="min-w-0 flex-1">
+          <h2 class="text-2xl font-bold leading-7 text-slate-900 dark:text-white sm:truncate sm:text-3xl sm:tracking-tight">
+            Active Portfolios
+          </h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Manage your automated betting strategies and track performance across mock and live environments.
           </p>
         </div>
-
-        <!-- Login form -->
-        <form class="space-y-5" @submit.prevent="handleSubmit">
-          <!-- Email field -->
-          <div>
-            <label
-              for="email"
-              class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
-            >
-              Email address
-            </label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              name="email"
-              required
-              placeholder="name@example.com"
-              class="block w-full rounded-lg border-0 py-2.5 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 bg-white dark:bg-slate-800/50 transition-shadow px-3"
-            >
-          </div>
-
-          <!-- Password field -->
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label
-                for="password"
-                class="block text-sm font-medium text-slate-700 dark:text-slate-300"
-              >
-                Password
-              </label>
-              <NuxtLink
-                to="/forgot-password"
-                class="text-sm font-medium text-primary hover:text-primary-hover transition-colors"
-              >
-                Forgot password?
-              </NuxtLink>
-            </div>
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              name="password"
-              required
-              placeholder="••••••••"
-              class="block w-full rounded-lg border-0 py-2.5 text-slate-900 dark:text-white shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 bg-white dark:bg-slate-800/50 transition-shadow px-3"
-            >
-          </div>
-
-          <!-- Submit button -->
+        <div class="mt-4 flex md:ml-4 md:mt-0">
           <button
-            type="submit"
-            :disabled="isLoading"
-            class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 shadow-blue-500/20 hover:shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90"
+            style="background-color: #2563EB; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);"
+            @click="handleAddProfile"
           >
-            <span v-if="isLoading" class="mr-2">
-              <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            </span>
-            Sign In
+            <span class="material-symbols-outlined text-lg">add</span>
+            Add New Profile
           </button>
-        </form>
-
-        <!-- Divider -->
-        <div class="relative mt-8 mb-6">
-          <div class="absolute inset-0 flex items-center" aria-hidden="true">
-            <div class="w-full border-t border-slate-200 dark:border-slate-700" />
-          </div>
-          <div class="relative flex justify-center">
-            <span class="bg-card-light dark:bg-card-dark px-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-              Or continue with
-            </span>
-          </div>
         </div>
-
-        <!-- Wallet connect button -->
-        <button
-          type="button"
-          class="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 group"
-          @click="connectWallet"
-        >
-          <span class="material-symbols-outlined text-[#F6851B] group-hover:scale-110 transition-transform">
-            account_balance_wallet
-          </span>
-          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Connect Wallet
-          </span>
-        </button>
-
-        <!-- Sign up link -->
-        <p class="mt-8 text-center text-sm text-slate-600 dark:text-slate-400">
-          Don't have an account?
-          <NuxtLink
-            to="/register"
-            class="font-semibold text-primary hover:text-primary-hover transition-colors"
-          >
-            Create an account
-          </NuxtLink>
-        </p>
       </div>
 
-      <!-- Footer -->
-      <div class="text-center mt-8">
-        <p class="text-xs text-slate-400 dark:text-slate-500">
-          © 2024 PolyCopy Automation. Secure Access.
-        </p>
+      <!-- Portfolio grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <PortfolioCard
+          v-for="portfolio in portfolios"
+          :key="portfolio.id"
+          :portfolio="portfolio"
+          @pause="handlePause"
+          @resume="handleResume"
+          @delete="handleDelete"
+          @settings="handleSettings"
+        />
       </div>
-    </div>
+
+      <!-- Add Trader Dialog -->
+      <AddTraderDialog
+        v-model="showAddTraderDialog"
+        @create="handleCreateTrader"
+      />
+
+
+      <!-- Executions table -->
+      <ExecutionsTable :executions="executions" />
+    </main>
+
+    <!-- Footer -->
+    <DashboardFooter />
   </div>
 </template>

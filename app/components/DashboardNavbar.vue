@@ -7,7 +7,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <div class="flex items-center">
-          <NuxtLink to="/dashboard" class="flex-shrink-0 flex items-center gap-2">
+          <NuxtLink to="/" class="flex-shrink-0 flex items-center gap-2">
             <span class="material-symbols-outlined text-3xl" style="color: #2563EB;">query_stats</span>
             <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">PolyCopy</h1>
           </NuxtLink>
