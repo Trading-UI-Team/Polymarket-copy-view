@@ -49,9 +49,10 @@ function formatCurrency(value: number): string {
 </script>
 
 <template>
-  <div
+  <NuxtLink
+    :to="{ path: `/traders/${portfolio.name}`, query: { status: portfolio.status, mode: portfolio.mode } }"
     :class="[
-      'bg-white dark:bg-card-dark rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col relative group',
+      'block bg-white dark:bg-card-dark rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200 dark:border-slate-700 overflow-hidden relative group cursor-pointer',
       portfolio.status === 'paused' ? 'opacity-75 hover:opacity-100' : '',
     ]"
   >
@@ -200,5 +201,5 @@ function formatCurrency(value: number): string {
         </button>
       </div>
     </div>
-  </div>
+  </NuxtLink>
 </template>
