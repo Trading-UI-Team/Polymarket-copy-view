@@ -103,9 +103,16 @@ function handleSettings(id: string) {
   console.log('Open settings for:', id)
 }
 
+// Dialog state
+const showAddTraderDialog = ref(false)
+
 function handleAddProfile() {
-  // TODO: Open add profile modal
-  console.log('Add new profile')
+  showAddTraderDialog.value = true
+}
+
+function handleCreateTrader(data: { mode: 'mock' | 'live'; form: unknown }) {
+  console.log('Creating trader:', data)
+  // TODO: Implement API call to create trader
 }
 
 function openGlobalSettings() {
@@ -155,6 +162,13 @@ function openGlobalSettings() {
         />
         <AddProfileCard @click="handleAddProfile" />
       </div>
+
+      <!-- Add Trader Dialog -->
+      <AddTraderDialog
+        v-model="showAddTraderDialog"
+        @create="handleCreateTrader"
+      />
+
 
       <!-- Executions table -->
       <ExecutionsTable :executions="executions" />
