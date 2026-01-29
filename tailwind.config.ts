@@ -11,6 +11,23 @@ export default {
     './app.vue',
     './error.vue',
   ],
+  // Safelist classes that are dynamically generated
+  safelist: [
+    'bg-warning',
+    'bg-success',
+    'bg-slate-400',
+    'text-primary',
+    'text-warning',
+    'text-success',
+    'text-danger',
+    'bg-warning/10',
+    'bg-success/10',
+    'text-warning',
+    'text-success',
+    'ring-warning/20',
+    'ring-success/20',
+    'animate-ping',
+  ],
   theme: {
     extend: {
       colors: {
