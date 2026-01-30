@@ -2,7 +2,7 @@
   <footer class="bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 mt-12 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
       <p class="text-sm text-slate-500 dark:text-slate-400">
-        © 2024 PolyCopy Automation. All rights reserved.
+        © 2025 PolyCopy Automation. All rights reserved.
       </p>
       <div class="flex space-x-6">
         <a

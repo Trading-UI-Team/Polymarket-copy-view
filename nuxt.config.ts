@@ -19,6 +19,8 @@ export default defineNuxtConfig({
     redis: {
       url: '' // Overridden by NUXT_REDIS_URL
     },
+    mongoUrl: '', // Overridden by NUXT_MONGO_URL
+    polymarketClobUrl: 'https://clob.polymarket.com', // Overridden by NUXT_POLYMARKET_CLOB_URL
     adminUsername: '', // Overridden by NUXT_ADMIN_USERNAME
     adminPassword: '', // Overridden by NUXT_ADMIN_PASSWORD
   },

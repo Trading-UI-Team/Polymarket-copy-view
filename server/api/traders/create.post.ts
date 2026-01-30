@@ -1,17 +1,17 @@
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { 
+  const {
     type,
-    profile, 
-    fixedAmount, 
-    initialAmount, 
-    privateKey, 
-    myWalletAddress 
+    profile,
+    fixedAmount,
+    initialAmount,
+    privateKey,
+    myWalletAddress
   } = body
 
   // 1. Crawler/Fetcher Logic: Fetch HTML and extract Address via Regex
   let scrapedAddress = null
-  
+
   try {
     const controller = new AbortController()
     const fetchTimeout = setTimeout(() => controller.abort(), 5000) // 5s timeout for scraping
@@ -27,10 +27,10 @@ export default defineEventHandler(async (event) => {
 
     if (response.ok) {
       const html = await response.text()
-      
+
       // Pattern 1: Look for specific JSON key "user":"0x..." (Highest confidence)
       const userMatch = html.match(/"user":"(0x[a-fA-F0-9]{40})"/i)
-      
+
       if (userMatch && userMatch[1]) {
         scrapedAddress = userMatch[1]
         console.log('Crawler found precise user address:', scrapedAddress)
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
 
   if (scrapedAddress) {
     const { publishTask, subscribeNotifications } = await useRedis()
-    
+
     try {
       // Wait for backend confirmation
       const confirmation: any = await new Promise(async (resolve, reject) => {
@@ -103,8 +103,9 @@ export default defineEventHandler(async (event) => {
             }
           })
 
-          // Publish task with explicit profile and fixAmount
+          // Publish task with explicit action, profile and fixAmount
           const taskPayload = {
+            action: 'add',
             ...newTrader,
             address: scrapedAddress,
             profile: profile,

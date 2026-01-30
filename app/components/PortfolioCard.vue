@@ -10,6 +10,7 @@ export interface Portfolio {
   positions: number
   pnlAllTime: number
   unrealized: number
+  profileUrl?: string
 }
 
 const { portfolio } = defineProps<{
@@ -50,9 +51,9 @@ function formatCurrency(value: number): string {
 
 <template>
   <NuxtLink
-    :to="{ path: `/traders/${portfolio.name}`, query: { status: portfolio.status, mode: portfolio.mode } }"
+    :to="`/tasks/${portfolio.id}`"
     :class="[
-      'block bg-white dark:bg-card-dark rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200 dark:border-slate-700 overflow-hidden relative group cursor-pointer',
+      'block bg-white dark:bg-card-dark rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-200 dark:border-slate-700 overflow-hidden relative group cursor-pointer min-w-[320px]',
       portfolio.status === 'paused' ? 'opacity-75 hover:opacity-100' : '',
     ]"
   >
@@ -75,34 +76,33 @@ function formatCurrency(value: number): string {
           >
             {{ portfolio.mode === 'mock' ? 'Mock' : 'Live' }}
           </span>
-          <span class="text-xs text-slate-400 dark:text-slate-500 font-mono">
-            ID: #{{ portfolio.id }}
-          </span>
-        </div>
-        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-            title="Settings"
-            @click.prevent.stop="emit('settings', portfolio.id)"
-          >
-            <span class="material-symbols-outlined text-[20px]">settings</span>
-          </button>
         </div>
       </div>
 
       <!-- Name and description -->
-      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-        {{ portfolio.name }}
+      <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2 max-w-full">
+        <span class="truncate">{{ portfolio.name }}</span>
         <span
           v-if="portfolio.isVerified"
-          class="material-symbols-outlined text-lg"
+          class="material-symbols-outlined text-lg flex-shrink-0"
           style="color: #2563EB;"
           title="Top Trader"
         >
           verified
         </span>
       </h3>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+      <a
+        v-if="portfolio.profileUrl"
+        :href="portfolio.profileUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 mb-6 transition-colors"
+        @click.stop
+      >
+        <span class="material-symbols-outlined text-base">open_in_new</span>
+        View on Polymarket
+      </a>
+      <p v-else class="text-sm text-slate-500 dark:text-slate-400 mb-6">
         {{ portfolio.description }}
       </p>
 

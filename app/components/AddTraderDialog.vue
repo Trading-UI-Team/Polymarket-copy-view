@@ -190,28 +190,8 @@ onUnmounted(() => {
                     </div>
                   </div>
 
-                  <!-- Amount & Capital Grid -->
+                  <!-- Capital & Amount Grid -->
                   <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="mock-amount">
-                        Amount per trade
-                      </label>
-                      <div class="relative rounded-md shadow-sm">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span class="text-slate-500 dark:text-slate-400 sm:text-sm">$</span>
-                        </div>
-                        <input
-                          id="mock-amount"
-                          v-model.number="mockForm.amountPerTrade"
-                          type="number"
-                          class="block w-full pl-7 pr-12 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
-                          placeholder="5.00"
-                        />
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <span class="text-slate-500 dark:text-slate-400 text-xs">USD</span>
-                        </div>
-                      </div>
-                    </div>
                     <div>
                       <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="mock-capital">
                         Initial Capital
@@ -226,6 +206,26 @@ onUnmounted(() => {
                           type="number"
                           class="block w-full pl-7 pr-12 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
                           placeholder="100.00"
+                        />
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span class="text-slate-500 dark:text-slate-400 text-xs">USD</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="mock-amount">
+                        Amount per trade
+                      </label>
+                      <div class="relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span class="text-slate-500 dark:text-slate-400 sm:text-sm">$</span>
+                        </div>
+                        <input
+                          id="mock-amount"
+                          v-model.number="mockForm.amountPerTrade"
+                          type="number"
+                          class="block w-full pl-7 pr-12 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
+                          placeholder="5.00"
                         />
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           <span class="text-slate-500 dark:text-slate-400 text-xs">USD</span>

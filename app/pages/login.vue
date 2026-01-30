@@ -144,7 +144,7 @@ async function handleSubmit() {
       <!-- Footer -->
       <div class="text-center mt-8">
         <p class="text-xs text-slate-400 dark:text-slate-500">
-          © 2024 PolyCopy Automation. Secure Access.
+          © 2025 PolyCopy Automation. Secure Access.
         </p>
       </div>
     </div>
