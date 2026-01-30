@@ -88,6 +88,7 @@ async function fetchPortfolios(background = false) {
         status: p.status,
         isVerified: p.isVerified,
         balance: p.balance,
+        equity: p.equity,
         positions: p.positions,
         pnlAllTime: p.pnlAllTime,
         unrealized: p.unrealized,
@@ -328,7 +329,7 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
     <DashboardNavbar />
 
     <!-- Main content -->
-    <main class="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
+    <main class="py-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex-1 min-w-0">
       <!-- Header -->
       <div class="md:flex md:items-center md:justify-between mb-8">
         <div class="min-w-0 flex-1">
@@ -372,7 +373,7 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
       <!-- Portfolio grid -->
       <!-- Loading State (only shown on initial load) -->
       <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="n in 3" :key="n" class="bg-white dark:bg-card-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative animate-pulse min-w-[320px]">
+        <div v-for="n in 3" :key="n" class="bg-white dark:bg-card-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative animate-pulse w-full">
           <!-- Left border indicator skeleton -->
           <div class="absolute top-0 left-0 w-1 h-full bg-slate-300 dark:bg-slate-600"></div>
           

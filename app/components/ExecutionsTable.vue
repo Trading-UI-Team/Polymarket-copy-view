@@ -38,7 +38,7 @@ function getModeColor(mode: Execution['profileMode']): string {
     <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">
       Recent Executions
     </h3>
-    <div class="bg-white dark:bg-card-dark shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10 rounded-xl overflow-hidden">
+    <div class="bg-white dark:bg-card-dark shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10 rounded-xl overflow-hidden w-full max-w-full">
       <!-- Empty State -->
       <div v-if="executions.length === 0" class="px-6 py-12 text-center">
         <span class="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500 mb-2">history</span>

@@ -224,8 +224,10 @@ const chartOptions = {
 
 
 // Fetch task details
-async function fetchTaskDetail() {
-  isLoading.value = true
+async function fetchTaskDetail(background = false) {
+  if (!background) {
+    isLoading.value = true
+  }
   loadError.value = null
   
   try {
@@ -236,9 +238,13 @@ async function fetchTaskDetail() {
     }
   } catch (error: any) {
     console.error('Failed to fetch task details:', error)
-    loadError.value = error.data?.statusMessage || error.message || 'Failed to load task details'
+    if (!background) {
+      loadError.value = error.data?.statusMessage || error.message || 'Failed to load task details'
+    }
   } finally {
-    isLoading.value = false
+    if (!background) {
+      isLoading.value = false
+    }
   }
 }
 
@@ -252,7 +258,7 @@ onMounted(async () => {
 const refreshInterval = ref<ReturnType<typeof setInterval> | null>(null)
 onMounted(() => {
   refreshInterval.value = setInterval(() => {
-    fetchTaskDetail()
+    fetchTaskDetail(true)
   }, 30000)
 })
 onUnmounted(() => {
@@ -472,14 +478,14 @@ function formatTimeAgo(timestamp: number): string {
               <span v-else class="material-symbols-outlined mr-2 text-base">
                 {{ task.status === 'active' ? 'pause' : 'play_arrow' }}
               </span>
-              {{ task.status === 'active' ? 'Pause Bot' : 'Resume Bot' }}
+              {{ task.status === 'active' ? 'Pause' : 'Resume' }}
             </button>
             <button
               type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
               @click="deleteBot"
             >
-              Stop & Delete
+              Delete
             </button>
           </div>
         </div>
