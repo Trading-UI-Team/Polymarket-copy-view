@@ -122,9 +122,36 @@ function handleAddProfile() {
   showAddTraderDialog.value = true
 }
 
-function handleCreateTrader(data: { mode: 'mock' | 'live'; form: unknown }) {
+const isCreating = ref(false)
+
+async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
   console.log('Creating trader:', data)
-  // TODO: Implement API call to create trader
+  isCreating.value = true
+  
+  try {
+    const payload = {
+      type: data.mode,
+      profile: data.form.profileUrl,
+      fixAmount: data.form.amountPerTrade,
+      initialAmount: data.form.initialCapital || 0,
+      myWalletAddress: data.form.walletAddress,
+      privateKey: data.form.privateKey
+    }
+
+    const { data: newTrader } = await $fetch('/api/traders/create', {
+      method: 'POST',
+      body: payload
+    })
+
+    if (newTrader) {
+      portfolios.value.unshift(newTrader as unknown as Portfolio) // Add to top of list
+    }
+  } catch (error) {
+    console.error('Failed to create trader:', error)
+    alert('Failed to connect to Polymarket API or create trader.')
+  } finally {
+    isCreating.value = false
+  }
 }
 </script>
 
@@ -140,6 +167,9 @@ function handleCreateTrader(data: { mode: 'mock' | 'live'; form: unknown }) {
         <div class="min-w-0 flex-1">
           <h2 class="text-2xl font-bold leading-7 text-slate-900 dark:text-white sm:truncate sm:text-3xl sm:tracking-tight">
             Active Portfolios
+            <span v-if="isCreating" class="ml-2 text-sm font-normal text-slate-500 animate-pulse">
+              (Connecting to Polymarket...)
+            </span>
           </h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Manage your automated betting strategies and track performance across mock and live environments.

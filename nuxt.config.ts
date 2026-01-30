@@ -15,6 +15,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    redis: {
+      url: '' // Overridden by NUXT_REDIS_URL
+    },
     adminUsername: '', // Overridden by NUXT_ADMIN_USERNAME
     adminPassword: '', // Overridden by NUXT_ADMIN_PASSWORD
   },
