@@ -611,7 +611,7 @@ function formatTimeAgo(timestamp: number): string {
         </div>
 
         <!-- Balance Cards -->
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center justify-between">
               <div>
@@ -624,7 +624,7 @@ function formatTimeAgo(timestamp: number): string {
           <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-5">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Equity (Balance + Positions)</p>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Equity</p>
                 <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ formatCurrency(task.equity) }}</p>
               </div>
               <span class="material-symbols-outlined text-3xl text-green-500">savings</span>
@@ -637,6 +637,15 @@ function formatTimeAgo(timestamp: number): string {
                 <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ formatCurrency(task.initialFinance) }}</p>
               </div>
               <span class="material-symbols-outlined text-3xl text-purple-500">attach_money</span>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Fixed Amount</p>
+                <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ formatCurrency(task.fixedAmount) }}</p>
+              </div>
+              <span class="material-symbols-outlined text-3xl text-orange-500">lock</span>
             </div>
           </div>
         </div>

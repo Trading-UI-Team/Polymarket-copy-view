@@ -11,6 +11,7 @@ export interface Portfolio {
   positions: number
   pnlAllTime: number
   unrealized: number
+  fixedAmount?: number
   profileUrl?: string
 }
 
@@ -140,6 +141,14 @@ function formatCurrency(value: number): string {
           </p>
           <p class="text-slate-900 dark:text-slate-100 font-semibold text-base mt-0.5">
             ${{ ((portfolio.equity || 0) - (portfolio.balance || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+          </p>
+        </div>
+        <div>
+          <p class="text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
+            Fixed Amount
+          </p>
+          <p class="text-slate-900 dark:text-slate-100 font-semibold text-base mt-0.5">
+            ${{ portfolio.fixedAmount?.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
           </p>
         </div>
         <div>

@@ -92,6 +92,7 @@ async function fetchPortfolios(background = false) {
         positions: p.positions,
         pnlAllTime: p.pnlAllTime,
         unrealized: p.unrealized,
+        fixedAmount: p.fixedAmount,
         profileUrl: p.profileUrl,
       }))
     }

@@ -244,6 +244,72 @@ function normalizeTask(task: Partial<CopyTask>): CopyTask {
     } as CopyTask
 }
 
+// Fetch USDC balance from Polygon RPC
+async function getUsdcBalance(address: string): Promise<number> {
+    const rpcUrl = 'https://polygon-rpc.com'
+    const usdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
+    // selector for balanceOf(address) is 0x70a08231
+    // address padded to 64 chars
+    const paddedAddress = address.replace(/^0x/, '').padStart(64, '0')
+    const data = '0x70a08231' + paddedAddress
+
+    try {
+        const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'eth_call',
+                params: [{ to: usdcAddress, data }, 'latest']
+            })
+        })
+        const json = await response.json() as any
+        if (json.result) {
+            const hexVal = json.result
+            const val = parseInt(hexVal, 16)
+            return val / 1_000_000 // USDC has 6 decimals
+        }
+    } catch (e) {
+        console.error('[task detail] Error fetching balance:', e)
+    }
+    return 0
+}
+
+// Fetch live activity from Polymarket Data API
+async function getLiveActivity(address: string): Promise<TradeRecordData[]> {
+    try {
+        const url = `https://data-api.polymarket.com/activity?user=${address}&limit=20`
+        const res = await fetch(url)
+        if (!res.ok) return []
+        const data = await res.json() as any[]
+
+        if (!Array.isArray(data)) return []
+
+        return data.map((item: any) => ({
+            id: item.id || `${address}-${item.timestamp}`,
+            taskId: '',
+            side: item.side || item.type || 'UNKNOWN',
+            asset: item.asset || '',
+            conditionId: item.conditionId || '',
+            outcomeIndex: 0,
+            fillPrice: Number(item.price || 0),
+            fillSize: Number(item.size || 0),
+            usdcAmount: Number(item.usdcSize || item.amount || 0),
+            slippage: 0,
+            realizedPnl: null,
+            executedAt: item.timestamp * 1000,
+            title: item.title || '',
+            slug: item.slug || '',
+            eventSlug: item.eventSlug || '',
+            outcome: item.outcome || '',
+        }))
+    } catch (e) {
+        console.error('[task detail] Error fetching live activity:', e)
+        return []
+    }
+}
+
 export default defineEventHandler(async (event) => {
     // Get taskId from route params
     const taskId = getRouterParam(event, 'taskId')
@@ -278,40 +344,100 @@ export default defineEventHandler(async (event) => {
     if (task.type === 'mock') {
         positions = await MockPosition.find({ taskId: task.id }).exec()
     } else {
-        positions = await UserPosition.find({ taskId: task.id }).exec()
+        // For live tasks, fetch real positions from Polymarket Data API
+        // Use myWalletAddress (the one executing trades) if available, otherwise target address
+        const targetAddress = (task.myWalletAddress && task.myWalletAddress.length > 0)
+            ? task.myWalletAddress
+            : task.address
+
+        try {
+            const positionsUrl = `https://data-api.polymarket.com/positions?user=${targetAddress}`
+            const res = await fetch(positionsUrl)
+
+            if (res.ok) {
+                const apiPositions = await res.json()
+                if (Array.isArray(apiPositions)) {
+                    positions = apiPositions.map((pos: any) => ({
+                        taskId: task.id,
+                        asset: pos.asset,
+                        conditionId: pos.conditionId,
+                        size: Number(pos.size),
+                        avgPrice: Number(pos.avgPrice),
+                        initialValue: Number(pos.initialValue),
+                        currentValue: Number(pos.currentValue),
+                        cashPnl: Number(pos.cashPnl),
+                        percentPnl: Number(pos.percentPnl),
+                        totalBought: Number(pos.totalBought),
+                        realizedPnl: Number(pos.realizedPnl),
+                        curPrice: Number(pos.curPrice),
+                        title: pos.title,
+                        slug: pos.slug,
+                        icon: pos.icon,
+                        eventSlug: pos.eventSlug,
+                        outcome: pos.outcome,
+                        outcomeIndex: pos.outcomeIndex,
+                        endDate: pos.endDate,
+                    } as any))
+                } else {
+                    positions = []
+                }
+            } else {
+                console.error(`[task detail] Failed to fetch live positions: ${res.status}`)
+                positions = []
+            }
+        } catch (error) {
+            console.error('[task detail] Error fetching live positions:', error)
+            positions = []
+        }
     }
 
     // Get realized PnL from trades
-    const realizedAgg = await MockTradeRecord.aggregate<{ _id: null; total: number }>([
-        { $match: { taskId: task.id, realizedPnl: { $type: 'number' } } },
-        { $group: { _id: null, total: { $sum: '$realizedPnl' } } },
-    ])
-    const realizedPnl = realizedAgg[0]?.total ?? 0
+    let realizedPnl = 0
+    if (task.type === 'mock') {
+        const realizedAgg = await MockTradeRecord.aggregate<{ _id: null; total: number }>([
+            { $match: { taskId: task.id, realizedPnl: { $type: 'number' } } },
+            { $group: { _id: null, total: { $sum: '$realizedPnl' } } },
+        ])
+        realizedPnl = realizedAgg[0]?.total ?? 0
+    }
 
-    // Fetch recent trades (last 20)
-    const recentTradesRaw = await MockTradeRecord.find({ taskId: task.id })
-        .sort({ executedAt: -1 })
-        .limit(20)
-        .exec()
+    // Fetch recent trades (mock or live)
+    let recentTrades: TradeRecordData[] = []
 
-    const recentTrades: TradeRecordData[] = recentTradesRaw.map((trade) => ({
-        id: trade._id?.toString() || `${trade.taskId}-${trade.executedAt}`,
-        taskId: trade.taskId,
-        side: trade.side,
-        asset: trade.asset,
-        conditionId: trade.conditionId,
-        outcomeIndex: trade.outcomeIndex ?? 0,
-        fillPrice: trade.fillPrice,
-        fillSize: trade.fillSize,
-        usdcAmount: trade.usdcAmount,
-        slippage: trade.slippage,
-        realizedPnl: trade.realizedPnl ?? null,
-        executedAt: trade.executedAt,
-        title: trade.title || '',
-        slug: trade.slug || '',
-        eventSlug: trade.eventSlug || '',
-        outcome: trade.outcome || '',
-    }))
+    // Check target address for live data
+    const targetAddress = (task.myWalletAddress && task.myWalletAddress.length > 0)
+        ? task.myWalletAddress
+        : task.address
+
+    if (task.type === 'live') {
+        // Fetch live activity from API
+        recentTrades = await getLiveActivity(targetAddress)
+    } else {
+        // Fetch mock trades from DB
+        const recentTradesRaw = await MockTradeRecord.find({ taskId: task.id })
+            .sort({ executedAt: -1 })
+            .limit(20)
+            .exec()
+
+        recentTrades = recentTradesRaw.map((trade) => ({
+            id: trade._id?.toString() || `${trade.taskId}-${trade.executedAt}`,
+            taskId: trade.taskId,
+            side: trade.side,
+            asset: trade.asset,
+            conditionId: trade.conditionId,
+            outcomeIndex: trade.outcomeIndex ?? 0,
+            fillPrice: trade.fillPrice,
+            fillSize: trade.fillSize,
+            usdcAmount: trade.usdcAmount,
+            slippage: trade.slippage,
+            realizedPnl: trade.realizedPnl ?? null,
+            executedAt: trade.executedAt,
+            title: trade.title || '',
+            slug: trade.slug || '',
+            eventSlug: trade.eventSlug || '',
+            outcome: trade.outcome || '',
+        }))
+    }
 
     // Fetch current prices and apply to positions
     const priceMap = await getOrderBookPriceMap(positions)
@@ -319,7 +445,17 @@ export default defineEventHandler(async (event) => {
     const positionStats = computePositionStats(pricedPositions)
 
     // Calculate equity and PnL
-    const currentBalance = task.currentBalance ?? 0
+    let currentBalance = task.currentBalance ?? 0
+
+    if (task.type === 'live') {
+        // Update balance from chain for live tasks
+        const liveBalance = await getUsdcBalance(targetAddress)
+        // If we got a valid balance, use it. Otherwise fall back to Redis value
+        if (liveBalance >= 0) {
+            currentBalance = liveBalance
+        }
+    }
+
     const initialFinance = task.initialFinance ?? 0
     const equity = currentBalance + positionStats.totalPositionValue
     const totalPnl = equity - initialFinance
