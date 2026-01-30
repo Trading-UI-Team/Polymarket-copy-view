@@ -217,6 +217,36 @@ function normalizeTask(task: Partial<CopyTask>): CopyTask {
     } as CopyTask
 }
 
+// Fetch USDC balance from Polygon RPC
+async function getUsdcBalance(address: string): Promise<number> {
+    const rpcUrl = 'https://polygon-rpc.com'
+    const usdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
+    const paddedAddress = address.replace(/^0x/, '').padStart(64, '0')
+    const data = '0x70a08231' + paddedAddress
+
+    try {
+        const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'eth_call',
+                params: [{ to: usdcAddress, data }, 'latest']
+            })
+        })
+        const json = await response.json() as any
+        if (json.result) {
+            const hexVal = json.result
+            const val = parseInt(hexVal, 16)
+            return val / 1_000_000
+        }
+    } catch (e) {
+        console.error('[tasks] Error fetching balance:', e)
+    }
+    return 0
+}
+
 export default defineEventHandler(async () => {
     // Connect to MongoDB
     await connectToMongoDB()
@@ -233,20 +263,71 @@ export default defineEventHandler(async () => {
         tasks.map(async (task): Promise<PortfolioData> => {
             // Fetch positions based on task type
             let positions: (IMockPosition | IUserPosition)[]
+            let realizedPnl = 0
+
             if (task.type === 'mock') {
                 positions = await MockPosition.find({ taskId: task.id }).exec()
+
+                // Get realized PnL from trades for mock
+                const realizedAgg = await MockTradeRecord.aggregate<{ _id: null; total: number }>([
+                    { $match: { taskId: task.id, realizedPnl: { $type: 'number' } } },
+                    { $group: { _id: null, total: { $sum: '$realizedPnl' } } },
+                ])
+                realizedPnl = realizedAgg[0]?.total ?? 0
             } else {
-                positions = await UserPosition.find({ taskId: task.id }).exec()
+                // Live task: fetch from API
+                const targetAddress = (task.myWalletAddress && task.myWalletAddress.length > 0)
+                    ? task.myWalletAddress
+                    : task.address
+
+                try {
+                    const positionsUrl = `https://data-api.polymarket.com/positions?user=${targetAddress}`
+                    const res = await fetch(positionsUrl)
+                    if (res.ok) {
+                        const apiPositions = await res.json()
+                        if (Array.isArray(apiPositions)) {
+                            positions = apiPositions.map((pos: any) => {
+                                const size = Number(pos.size)
+                                const avgPrice = Number(pos.avgPrice)
+                                const currentValue = Number(pos.currentValue)
+                                // Force calculation of Cost Basis using avgPrice ONLY
+                                const costBasis = size * avgPrice
+                                // Recalculate PnL to be consistent
+                                const cashPnl = currentValue - costBasis
+                                const percentPnl = costBasis > 0 ? (cashPnl / costBasis) * 100 : 0
+
+                                return {
+                                    taskId: task.id,
+                                    asset: pos.asset,
+                                    conditionId: pos.conditionId,
+                                    size: size,
+                                    avgPrice: avgPrice,
+                                    currentValue: currentValue,
+                                    cashPnl: cashPnl,
+                                    percentPnl: percentPnl,
+                                    realizedPnl: Number(pos.realizedPnl),
+                                    curPrice: Number(pos.curPrice),
+                                    title: pos.title,
+                                    slug: pos.slug,
+                                    icon: pos.icon,
+                                    eventSlug: pos.eventSlug,
+                                    outcome: pos.outcome,
+                                    outcomeIndex: pos.outcomeIndex,
+                                    endDate: pos.endDate,
+                                } as any
+                            })
+                        } else {
+                            positions = []
+                        }
+                    } else {
+                        positions = []
+                    }
+                } catch (error) {
+                    console.error('[tasks] Error fetching live positions:', error)
+                    positions = []
+                }
+                realizedPnl = 0 // TODO: Calculate realized from live trades if needed
             }
-
-
-
-            // Get realized PnL from trades
-            const realizedAgg = await MockTradeRecord.aggregate<{ _id: null; total: number }>([
-                { $match: { taskId: task.id, realizedPnl: { $type: 'number' } } },
-                { $group: { _id: null, total: { $sum: '$realizedPnl' } } },
-            ])
-            const realizedPnl = realizedAgg[0]?.total ?? 0
 
             // Fetch current prices and apply to positions
             const priceMap = await getOrderBookPriceMap(positions)
@@ -254,7 +335,17 @@ export default defineEventHandler(async () => {
             const positionStats = computePositionStats(pricedPositions)
 
             // Calculate equity and PnL
-            const currentBalance = task.currentBalance ?? 0
+            let currentBalance = task.currentBalance ?? 0
+            if (task.type === 'live') {
+                const targetAddress = (task.myWalletAddress && task.myWalletAddress.length > 0)
+                    ? task.myWalletAddress
+                    : task.address
+                const liveBalance = await getUsdcBalance(targetAddress)
+                if (liveBalance >= 0) {
+                    currentBalance = liveBalance
+                }
+            }
+
             const initialFinance = task.initialFinance ?? 0
             const equity = currentBalance + positionStats.totalPositionValue
             const totalPnl = equity - initialFinance
