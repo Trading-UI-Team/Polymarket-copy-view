@@ -196,10 +196,69 @@ function toggleBotStatus() {
   console.log(`Bot status changed to: ${trader.status}`)
 }
 
+// Confirm Dialog
+const showConfirmDelete = ref(false)
+
 function deleteBot() {
-  console.log('Deleting bot:', traderName.value)
-  // TODO: Add confirmation modal
+  showConfirmDelete.value = true
 }
+
+function handleConfirmDelete() {
+  console.log('Deleting bot:', traderName.value)
+  // TODO: API Call
+  navigateTo('/')
+}
+
+function scrollToPositions() {
+  const el = document.getElementById('current-positions')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
+// Infinite Scroll for Trade History
+const loadTrigger = ref<HTMLElement | null>(null)
+const isLoadingMore = ref(false)
+const displayedHistory = ref<typeof tradeHistory.value>([])
+
+// Generate more mock data
+const generateMockTrade = (id: number) => ({
+  id: id.toString(),
+  market: `Mock Market Event ${id}`,
+  outcome: Math.random() > 0.5 ? 'yes' : 'no',
+  category: ['Politics', 'Crypto', 'Economy', 'Science', 'Entertainment'][Math.floor(Math.random() * 5)] || 'General',
+  entryPrice: Number(Math.random().toFixed(2)),
+  exitPrice: Number(Math.random().toFixed(2)),
+  profit: Number((Math.random() * 100 - 30).toFixed(2)),
+  isProfit: Math.random() > 0.4,
+  closedAt: `${Math.floor(Math.random() * 24)} hours ago`,
+})
+
+const loadMoreHistory = () => {
+  if (isLoadingMore.value) return
+  isLoadingMore.value = true
+  
+  // Simulate API load
+  setTimeout(() => {
+    const currentLength = displayedHistory.value.length
+    const newItems = Array.from({ length: 5 }, (_, i) => generateMockTrade(currentLength + i + 1))
+    displayedHistory.value.push(...newItems)
+    isLoadingMore.value = false
+  }, 800)
+}
+
+onMounted(() => {
+  // Init infinite scroll
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0] && entries[0].isIntersecting) {
+      loadMoreHistory()
+    }
+  }, { rootMargin: '100px' })
+  
+  if (loadTrigger.value) {
+    observer.observe(loadTrigger.value)
+  }
+})
 
 function updateConfig() {
   console.log('Updating config:', config)
@@ -305,11 +364,20 @@ function formatPercent(value: number): string {
             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
             @click="deleteBot"
           >
-            <span class="material-symbols-outlined mr-2 text-base">delete</span>
-            Stop & Delete
-          </button>
+              Stop & Delete
+            </button>
+          </div>
         </div>
-      </div>
+
+        <!-- Confirm Dialog -->
+        <ConfirmDialog
+          v-model:is-open="showConfirmDelete"
+          title="Delete Trader Bot"
+          :message="`Are you sure you want to delete ${trader.name}? This action cannot be undone and will close all active positions.`"
+          type="danger"
+          confirm-text="Delete"
+          @confirm="handleConfirmDelete"
+        />
 
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -405,7 +473,9 @@ function formatPercent(value: number): string {
           </div>
           <div class="bg-slate-50 dark:bg-slate-700/50 px-5 py-3">
             <div class="text-sm">
-              <a href="#current-positions" class="font-medium hover:opacity-80" style="color: #2563EB;">View all positions</a>
+            <div class="text-sm">
+              <a href="#current-positions" class="font-medium hover:opacity-80 cursor-pointer" style="color: #2563EB;" @click.prevent="scrollToPositions">View all positions</a>
+            </div>
             </div>
           </div>
         </div>
@@ -511,21 +581,12 @@ function formatPercent(value: number): string {
                       <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Current Price</th>
                       <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Shares</th>
                       <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Unrealized PnL</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                     <tr v-for="position in positions" :key="position.id">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                          <div class="flex-shrink-0 h-10 w-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                            <span class="material-symbols-outlined text-slate-500 dark:text-slate-400">timeline</span>
-                          </div>
-                          <div class="ml-4">
-                            <div class="text-sm font-medium text-slate-900 dark:text-white">{{ position.market }}</div>
-                            <div class="text-sm text-slate-500 dark:text-slate-400">{{ position.category }}</div>
-                          </div>
-                        </div>
+                        <div class="text-sm font-medium text-slate-900 dark:text-white">{{ position.market }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span
@@ -558,15 +619,6 @@ function formatPercent(value: number): string {
                           {{ position.pnl >= 0 ? '+' : '' }}${{ position.pnl.toFixed(2) }} ({{ formatPercent(position.pnlPercent) }})
                         </span>
                       </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          class="hover:opacity-80"
-                          style="color: #2563EB;"
-                          @click="closePosition(position.id)"
-                        >
-                          Close
-                        </button>
-                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -580,52 +632,61 @@ function formatPercent(value: number): string {
       <div>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Trade History</h3>
-          <button class="text-sm font-medium hover:opacity-80" style="color: #2563EB;">
-            View Full History →
-          </button>
         </div>
-        <div class="bg-white dark:bg-slate-800 shadow overflow-hidden sm:rounded-md border border-slate-200 dark:border-slate-700">
-          <ul role="list" class="divide-y divide-slate-200 dark:divide-slate-700">
-            <li v-for="trade in tradeHistory" :key="trade.id">
-              <div class="block hover:bg-slate-50 dark:hover:bg-slate-700/50 transition duration-150 ease-in-out">
-                <div class="px-4 py-4 sm:px-6">
-                  <div class="flex items-center justify-between">
-                    <p class="text-sm font-medium truncate" style="color: #2563EB;">
-                      Sold '{{ trade.outcome === 'yes' ? 'Yes' : 'No' }}' on "{{ trade.market }}"
-                    </p>
-                    <div class="ml-2 flex-shrink-0 flex">
-                      <p
-                        :class="[
-                          'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                          trade.isProfit
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-                        ]"
-                      >
-                        {{ trade.isProfit ? 'Profit' : 'Loss' }}: {{ formatCurrency(trade.profit) }}
+        <div class="bg-white dark:bg-slate-800 shadow sm:rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div class="max-h-[350px] overflow-y-auto custom-scrollbar">
+            <ul role="list" class="divide-y divide-slate-200 dark:divide-slate-700">
+              <li v-for="trade in displayedHistory" :key="trade.id">
+                <div class="block hover:bg-slate-50 dark:hover:bg-slate-700/50 transition duration-150 ease-in-out">
+                  <div class="px-4 py-4 sm:px-6">
+                    <div class="flex items-center justify-between">
+                      <p class="text-sm font-medium truncate" style="color: #2563EB;">
+                        Sold '{{ trade.outcome === 'yes' ? 'Yes' : 'No' }}' on "{{ trade.market }}"
                       </p>
+                      <div class="ml-2 flex-shrink-0 flex">
+                        <p
+                          :class="[
+                            'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
+                            trade.isProfit
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+                          ]"
+                        >
+                          {{ trade.isProfit ? 'Profit' : 'Loss' }}: {{ formatCurrency(trade.profit) }}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div class="mt-2 sm:flex sm:justify-between">
-                    <div class="sm:flex">
-                      <p class="flex items-center text-sm text-slate-500 dark:text-slate-400">
-                        <span class="material-symbols-outlined text-sm mr-1">attach_money</span>
-                        Sold at ${{ trade.exitPrice.toFixed(2) }} (Entry ${{ trade.entryPrice.toFixed(2) }})
-                      </p>
-                      <p class="mt-2 flex items-center text-sm text-slate-500 dark:text-slate-400 sm:mt-0 sm:ml-6">
-                        <span class="material-symbols-outlined text-sm mr-1">category</span>
-                        {{ trade.category }}
-                      </p>
-                    </div>
-                    <div class="mt-2 flex items-center text-sm text-slate-500 dark:text-slate-400 sm:mt-0">
-                      <span class="material-symbols-outlined text-sm mr-1">schedule</span>
-                      <p>Closed {{ trade.closedAt }}</p>
+                    <div class="mt-2 sm:flex sm:justify-between">
+                      <div class="sm:flex">
+                        <p class="flex items-center text-sm text-slate-500 dark:text-slate-400">
+                          <span class="material-symbols-outlined text-sm mr-1">attach_money</span>
+                          Sold at ${{ trade.exitPrice.toFixed(2) }} (Entry ${{ trade.entryPrice.toFixed(2) }})
+                        </p>
+                        <p class="mt-2 flex items-center text-sm text-slate-500 dark:text-slate-400 sm:mt-0 sm:ml-6">
+                          <span class="material-symbols-outlined text-sm mr-1">category</span>
+                          {{ trade.category }}
+                        </p>
+                      </div>
+                      <div class="mt-2 flex items-center text-sm text-slate-500 dark:text-slate-400 sm:mt-0">
+                        <span class="material-symbols-outlined text-sm mr-1">schedule</span>
+                        <p>Closed {{ trade.closedAt }}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          </ul>
+              </li>
+            </ul>
+            <!-- Infinite scroll trigger -->
+            <div ref="loadTrigger" class="py-4 text-center">
+              <span v-if="isLoadingMore" class="text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading older trades...
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </main>

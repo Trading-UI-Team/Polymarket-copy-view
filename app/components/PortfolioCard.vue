@@ -83,7 +83,7 @@ function formatCurrency(value: number): string {
           <button
             class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
             title="Settings"
-            @click="emit('settings', portfolio.id)"
+            @click.prevent.stop="emit('settings', portfolio.id)"
           >
             <span class="material-symbols-outlined text-[20px]">settings</span>
           </button>
@@ -180,7 +180,7 @@ function formatCurrency(value: number): string {
           v-if="portfolio.status === 'active'"
           class="text-slate-600 dark:text-slate-300 hover:text-warning dark:hover:text-warning transition-colors p-1"
           title="Pause Trading"
-          @click="emit('pause', portfolio.id)"
+          @click.prevent.stop="emit('pause', portfolio.id)"
         >
           <span class="material-symbols-outlined text-[20px]">pause_circle</span>
         </button>
@@ -188,14 +188,14 @@ function formatCurrency(value: number): string {
           v-else
           class="text-slate-600 dark:text-slate-300 hover:text-success dark:hover:text-success transition-colors p-1"
           title="Resume Trading"
-          @click="emit('resume', portfolio.id)"
+          @click.prevent.stop="emit('resume', portfolio.id)"
         >
           <span class="material-symbols-outlined text-[20px]">play_circle</span>
         </button>
         <button
           class="text-slate-600 dark:text-slate-300 hover:text-danger dark:hover:text-danger transition-colors p-1"
           title="Delete Profile"
-          @click="emit('delete', portfolio.id)"
+          @click.prevent.stop="emit('delete', portfolio.id)"
         >
           <span class="material-symbols-outlined text-[20px]">delete</span>
         </button>

@@ -13,14 +13,38 @@ useSeoMeta({
 const username = ref('')
 const password = ref('')
 const isLoading = ref(false)
+const errorMessage = ref('')
+
+const { fetch, loggedIn } = useUserSession()
+const router = useRouter()
+
+// Redirect if already logged in
+if (loggedIn.value) {
+  navigateTo('/')
+}
 
 // Form submission
 async function handleSubmit() {
   isLoading.value = true
+  errorMessage.value = ''
+  
   try {
-    // TODO: Implement actual login logic
-    console.log('Login attempt:', { username: username.value })
-    await navigateTo('/')
+    await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: {
+        username: username.value,
+        password: password.value
+      }
+    })
+
+    // Refresh session to update loggedIn status
+    await fetch()
+    
+    // Redirect to home
+    router.push('/')
+  }
+  catch (e: any) {
+    errorMessage.value = e.data?.message || 'Authentication failed. Please check your credentials.'
   }
   finally {
     isLoading.value = false
@@ -51,6 +75,12 @@ async function handleSubmit() {
           <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center">
             Welcome back. Sign in to your portfolio.
           </p>
+        </div>
+
+        <!-- Error Message -->
+        <div v-if="errorMessage" class="mb-5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-3">
+          <span class="material-symbols-outlined text-red-600 dark:text-red-400 text-sm mt-0.5">error</span>
+          <p class="text-sm text-red-700 dark:text-red-300">{{ errorMessage }}</p>
         </div>
 
         <!-- Login form -->

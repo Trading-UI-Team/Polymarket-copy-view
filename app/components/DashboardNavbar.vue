@@ -1,5 +1,13 @@
 <script setup lang="ts">
-// Simple navbar with just logo and avatar
+const { user, clear } = useUserSession()
+const router = useRouter()
+
+const username = computed(() => (user.value as any)?.username || 'User')
+
+async function handleLogout() {
+  await clear()
+  await router.push('/login')
+}
 </script>
 
 <template>
@@ -12,12 +20,17 @@
             <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">PolyCopy</h1>
           </NuxtLink>
         </div>
-        <div class="flex items-center">
+        <div class="flex items-center gap-4">
+          <span v-if="user" class="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
+            {{ username }}
+          </span>
           <div
-            class="h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm shadow-sm ring-2 ring-white dark:ring-slate-800 cursor-pointer"
+            class="h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm shadow-sm ring-2 ring-white dark:ring-slate-800 cursor-pointer hover:opacity-90 transition-opacity"
             style="background-color: #2563EB;"
+            @click="handleLogout"
+            title="Click to Logout"
           >
-            JD
+            <span class="material-symbols-outlined text-sm">logout</span>
           </div>
         </div>
       </div>

@@ -6,11 +6,17 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@nuxt/eslint',
+    'nuxt-auth-utils',
   ],
 
   typescript: {
     strict: true,
     typeCheck: true,
+  },
+
+  runtimeConfig: {
+    adminUsername: '', // Overridden by NUXT_ADMIN_USERNAME
+    adminPassword: '', // Overridden by NUXT_ADMIN_PASSWORD
   },
 })
 

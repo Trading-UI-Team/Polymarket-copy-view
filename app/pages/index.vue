@@ -93,9 +93,21 @@ function handleResume(id: string) {
   }
 }
 
+// Confirm Delete logic
+const showConfirmDelete = ref(false)
+const traderToDelete = ref<string | null>(null)
+
 function handleDelete(id: string) {
-  // TODO: Add confirmation modal
-  portfolios.value = portfolios.value.filter(p => p.id !== id)
+  traderToDelete.value = id
+  showConfirmDelete.value = true
+}
+
+function confirmDelete() {
+  if (traderToDelete.value) {
+    portfolios.value = portfolios.value.filter(p => p.id !== traderToDelete.value)
+    console.log('Deleted trader:', traderToDelete.value)
+    traderToDelete.value = null
+  }
 }
 
 function handleSettings(id: string) {
@@ -163,6 +175,16 @@ function handleCreateTrader(data: { mode: 'mock' | 'live'; form: unknown }) {
       <AddTraderDialog
         v-model="showAddTraderDialog"
         @create="handleCreateTrader"
+      />
+
+      <!-- Confirm Delete Dialog -->
+      <ConfirmDialog
+        v-model:is-open="showConfirmDelete"
+        title="Delete Profile"
+        message="Are you sure you want to delete this profile? This action will stop all copy trading for this profile and cannot be undone."
+        type="danger"
+        confirm-text="Delete"
+        @confirm="confirmDelete"
       />
 
 
