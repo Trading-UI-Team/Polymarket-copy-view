@@ -9,9 +9,9 @@ let _subClient: ReturnType<typeof createClient> | null = null
 // Helper to create a new client
 const createRedisClient = () => {
   const config = useRuntimeConfig()
-  const redisUrl = config.redis?.url || 'redis://localhost:6379'
+  const redisUrl = (config as any).redis?.url || 'redis://localhost:6379'
   const client = createClient({ url: redisUrl })
-  client.on('error', (err) => console.error('[Redis Error]', err))
+  ;(client as any).on('error', (err: any) => console.error('[Redis Error]', err))
   return client
 }
 
@@ -56,18 +56,23 @@ export const useRedis = async () => {
   const subscribeNotifications = async (onMessage: (data: any) => void) => {
     const subClient = await getSubClient()
     
-    // Use the shared subClient. Note that node-redis handles multiplexing for subscribe listeners
-    await subClient.subscribe(CHANNEL_NOTIFICATIONS, (message) => {
+    const listener = (message: string) => {
       try {
         const data = JSON.parse(message)
         onMessage(data)
       } catch (err) {
         console.error('[Redis Sub] JSON Parse Error:', err)
       }
-    })
+    }
 
+    await subClient.subscribe(CHANNEL_NOTIFICATIONS, listener)
     console.log(`[Redis] Subscribed to ${CHANNEL_NOTIFICATIONS}`)
-    return subClient
+    
+    return {
+      cleanup: async () => {
+        await subClient.unsubscribe(CHANNEL_NOTIFICATIONS, listener)
+      }
+    }
   }
 
   return {

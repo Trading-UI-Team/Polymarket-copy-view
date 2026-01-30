@@ -113,7 +113,7 @@ function formatCurrency(value: number): string {
             Total Balance
           </p>
           <p class="text-slate-900 dark:text-slate-100 font-semibold text-base mt-0.5">
-            ${{ portfolio.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+            ${{ portfolio.balance?.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
           </p>
         </div>
         <div>

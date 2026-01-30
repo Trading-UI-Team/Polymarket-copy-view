@@ -13,12 +13,17 @@ export default defineEventHandler(async (event) => {
   let scrapedAddress = null
   
   try {
+    const controller = new AbortController()
+    const fetchTimeout = setTimeout(() => controller.abort(), 5000) // 5s timeout for scraping
+
     const response = await fetch(profile, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
       }
     })
+    clearTimeout(fetchTimeout)
 
     if (response.ok) {
       const html = await response.text()
@@ -57,65 +62,65 @@ export default defineEventHandler(async (event) => {
   }
 
   // connect redis: use env REDIS_URL
+
   if (scrapedAddress) {
     const { publishTask, subscribeNotifications } = await useRedis()
     
     try {
       // Wait for backend confirmation
       const confirmation: any = await new Promise(async (resolve, reject) => {
-        let subClient: any = null
+        let subscription: { cleanup: () => Promise<void> } | null = null
         let isResolved = false
         const timeoutMs = 30000 // 30 seconds wait time
 
         const timer = setTimeout(async () => {
           if (!isResolved) {
             isResolved = true
-            if (subClient) await subClient.disconnect()
+            if (subscription) await subscription.cleanup()
             reject(createError({ statusCode: 504, message: 'Timeout waiting for backend confirmation' }))
           }
         }, timeoutMs)
 
         try {
           // Subscribe to notifications channel
-          subClient = await subscribeNotifications(async (msg: any) => {
-            // Match response by address
-            if (msg.address && msg.address.toLowerCase() === scrapedAddress.toLowerCase()) {
-              if (msg.event === 'task_created') {
-                if (!isResolved) {
-                  isResolved = true
-                  clearTimeout(timer)
-                  await subClient.disconnect()
-                  resolve(msg)
-                }
-              } else if (msg.event === 'task_error') {
-                if (!isResolved) {
-                  isResolved = true
-                  clearTimeout(timer)
-                  await subClient.disconnect()
-                  
-                  // Extract friendlier error message if possible
-                  const errMsg = msg.error || 'Backend task failed'
-                  reject(createError({ statusCode: 500, message: errMsg }))
-                }
+          subscription = await subscribeNotifications(async (msg: any) => {
+            // Match response by address OR profile (case-insensitive)
+            if (msg.event === 'task_created') {
+              if (!isResolved) {
+                isResolved = true
+                clearTimeout(timer)
+                if (subscription) await subscription.cleanup()
+                resolve(msg)
+              }
+            } else if (msg.event === 'task_error') {
+              if (!isResolved) {
+                isResolved = true
+                clearTimeout(timer)
+                if (subscription) await subscription.cleanup()
+                const errMsg = msg.error || 'Backend task failed'
+                reject(createError({ statusCode: 500, message: errMsg }))
               }
             }
           })
 
-          // Publish task only after subscription is active
-          await publishTask(newTrader)
+          // Publish task with explicit profile and fixAmount
+          const taskPayload = {
+            ...newTrader,
+            address: scrapedAddress,
+            profile: profile,
+            fixAmount: fixedAmount
+          }
+          await publishTask(taskPayload)
 
         } catch (e) {
           if (!isResolved) {
             isResolved = true
             clearTimeout(timer)
-            if (subClient) await subClient.disconnect()
+            if (subscription) await subscription.cleanup()
             reject(e)
           }
         }
       })
-
-      // 移除原本的合併邏輯
-      // if (confirmation.taskId) { ... }
 
       return {
         success: true,

@@ -132,23 +132,29 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
     const payload = {
       type: data.mode,
       profile: data.form.profileUrl,
-      fixAmount: data.form.amountPerTrade,
+      fixedAmount: data.form.amountPerTrade,
       initialAmount: data.form.initialCapital || 0,
       myWalletAddress: data.form.walletAddress,
       privateKey: data.form.privateKey
     }
 
-    const { data: newTrader } = await $fetch('/api/traders/create', {
+    const { data: trader } = await $fetch<{ success: boolean; data: any }>('/api/traders/create', {
       method: 'POST',
       body: payload
     })
 
-    if (newTrader) {
-      portfolios.value.unshift(newTrader as unknown as Portfolio) // Add to top of list
+    if (trader) {
+      // call api
+      portfolios.value.unshift(trader as unknown as Portfolio) // Add to top of list
+      showAddTraderDialog.value = false // Close dialog on success
+    } else {
+       throw new Error('No trader data returned from server')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create trader:', error)
-    alert('Failed to connect to Polymarket API or create trader.')
+    // Show a more friendly error message
+    const errorMsg = error.data?.message || error.message || 'Failed to connect to Polymarket API.'
+    alert(`Error: ${errorMsg}`)
   } finally {
     isCreating.value = false
   }
@@ -204,6 +210,7 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
       <!-- Add Trader Dialog -->
       <AddTraderDialog
         v-model="showAddTraderDialog"
+        :loading="isCreating"
         @create="handleCreateTrader"
       />
 

@@ -14,8 +14,9 @@ interface LiveFormData {
   privateKey: string
 }
 
-const { modelValue = false } = defineProps<{
+const { modelValue = false, loading = false } = defineProps<{
   modelValue?: boolean
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -51,7 +52,6 @@ function closeDialog() {
 function handleCreate() {
   const formData = activeTab.value === 'mock' ? { ...mockForm } : { ...liveForm }
   emit('create', { mode: activeTab.value, form: formData })
-  closeDialog()
 }
 
 function resetForm() {
@@ -356,12 +356,14 @@ onUnmounted(() => {
               </button>
               <button
                 type="button"
-                class="px-4 py-2 text-sm font-medium text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg transition-all flex items-center gap-2"
+                :disabled="loading"
+                class="px-4 py-2 text-sm font-medium text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 style="background-color: #2563EB; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);"
                 @click="handleCreate"
               >
-                <span class="material-symbols-outlined text-sm">check</span>
-                Create Trader
+                <span v-if="loading" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span v-else class="material-symbols-outlined text-sm">check</span>
+                {{ loading ? 'Creating...' : 'Create Trader' }}
               </button>
             </div>
           </div>
