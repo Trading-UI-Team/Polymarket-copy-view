@@ -357,27 +357,38 @@ export default defineEventHandler(async (event) => {
             if (res.ok) {
                 const apiPositions = await res.json()
                 if (Array.isArray(apiPositions)) {
-                    positions = apiPositions.map((pos: any) => ({
-                        taskId: task.id,
-                        asset: pos.asset,
-                        conditionId: pos.conditionId,
-                        size: Number(pos.size),
-                        avgPrice: Number(pos.avgPrice),
-                        initialValue: Number(pos.initialValue),
-                        currentValue: Number(pos.currentValue),
-                        cashPnl: Number(pos.cashPnl),
-                        percentPnl: Number(pos.percentPnl),
-                        totalBought: Number(pos.totalBought),
-                        realizedPnl: Number(pos.realizedPnl),
-                        curPrice: Number(pos.curPrice),
-                        title: pos.title,
-                        slug: pos.slug,
-                        icon: pos.icon,
-                        eventSlug: pos.eventSlug,
-                        outcome: pos.outcome,
-                        outcomeIndex: pos.outcomeIndex,
-                        endDate: pos.endDate,
-                    } as any))
+                    positions = apiPositions.map((pos: any) => {
+                        const size = Number(pos.size)
+                        const avgPrice = Number(pos.avgPrice)
+                        const currentValue = Number(pos.currentValue)
+                        // Force calculation of Cost Basis using avgPrice ONLY
+                        const costBasis = size * avgPrice
+                        // Recalculate PnL to be consistent
+                        const cashPnl = currentValue - costBasis
+                        const percentPnl = costBasis > 0 ? (cashPnl / costBasis) * 100 : 0
+
+                        return {
+                            taskId: task.id,
+                            asset: pos.asset,
+                            conditionId: pos.conditionId,
+                            size: size,
+                            avgPrice: avgPrice,
+                            // initialValue: Number(pos.initialValue), // Don't use API initialValue
+                            // totalBought: Number(pos.totalBought), // Don't use API totalBought
+                            currentValue: currentValue,
+                            cashPnl: cashPnl, // Use locally calculated PnL
+                            percentPnl: percentPnl, // Use locally calculated %
+                            realizedPnl: Number(pos.realizedPnl),
+                            curPrice: Number(pos.curPrice),
+                            title: pos.title,
+                            slug: pos.slug,
+                            icon: pos.icon,
+                            eventSlug: pos.eventSlug,
+                            outcome: pos.outcome,
+                            outcomeIndex: pos.outcomeIndex,
+                            endDate: pos.endDate,
+                        } as any
+                    })
                 } else {
                     positions = []
                 }
