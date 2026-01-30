@@ -52,7 +52,7 @@ export default defineEventHandler(async () => {
 
     for (const [key, value] of Object.entries(allTasksStr)) {
         try {
-            const task = JSON.parse(value)
+            const task = JSON.parse(value as string)
             tasksMap.set(task.id, {
                 id: task.id,
                 type: task.type || 'mock',

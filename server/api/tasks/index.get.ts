@@ -226,7 +226,7 @@ export default defineEventHandler(async () => {
 
     // Fetch all tasks from Redis
     const allTasksStr = await client.hGetAll(TASKS_KEY)
-    const tasks: CopyTask[] = Object.values(allTasksStr).map((t) => normalizeTask(JSON.parse(t)))
+    const tasks: CopyTask[] = Object.values(allTasksStr).map((t) => normalizeTask(JSON.parse(t as string)))
 
     // Build portfolio data for each task
     const portfolios: PortfolioData[] = await Promise.all(

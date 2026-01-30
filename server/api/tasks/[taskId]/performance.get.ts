@@ -131,8 +131,8 @@ export default defineEventHandler(async (event) => {
 
     // Add current point if the last point is not recent
     const currentTime = Date.now()
-    if (performanceHistory.length === 0 ||
-        (performanceHistory[performanceHistory.length - 1].timestamp < currentTime - intervalMs)) {
+    const lastPoint = performanceHistory[performanceHistory.length - 1]
+    if (performanceHistory.length === 0 || (lastPoint && lastPoint.timestamp < currentTime - intervalMs)) {
         performanceHistory.push({
             timestamp: currentTime,
             equity: initialFinance + cumulativeRealizedPnl,

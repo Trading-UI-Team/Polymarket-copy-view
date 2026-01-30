@@ -389,7 +389,7 @@ function formatTimeAgo(timestamp: number): string {
           <button
             class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90"
             style="background-color: #2563EB;"
-            @click="fetchTaskDetail"
+            @click="() => fetchTaskDetail()"
           >
             <span class="material-symbols-outlined text-lg">refresh</span>
             Retry
