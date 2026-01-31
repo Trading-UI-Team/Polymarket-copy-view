@@ -268,9 +268,11 @@ onUnmounted(() => {
 })
 
 // Actions
-import pkg from 'vue-toastification'
-const { useToast } = pkg as any
-const toast = useToast()
+
+const toast = { 
+  success: (msg: any) => console.log('Success:', msg), 
+  error: (msg: any) => console.error('Error:', msg) 
+}
 
 const isActionLoading = ref(false)
 
