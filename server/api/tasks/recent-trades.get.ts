@@ -1,5 +1,5 @@
 import { connectToMongoDB } from '../../utils/mongodb'
-import { MockTradeRecord } from '../../models/MockTradeRecord'
+import { TradeRecord } from '../../models/TradeRecord'
 
 // Redis task key (same as in the telegram bot)
 const TASKS_KEY = 'copy-polymarket:tasks'
@@ -64,7 +64,7 @@ export default defineEventHandler(async () => {
     }
 
     // Fetch recent trades
-    const recentTrades = await MockTradeRecord
+    const recentTrades = await TradeRecord
         .find({})
         .sort({ executedAt: -1 })
         .limit(limit)

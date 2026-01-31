@@ -363,12 +363,12 @@ function formatTimeAgo(timestamp: number): string {
 </script>
 
 <template>
-  <div class="bg-background-light dark:bg-background-dark min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300">
+  <div class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col text-slate-800 dark:text-slate-100 transition-colors duration-300">
     <!-- Navbar -->
     <DashboardNavbar />
 
     <!-- Main content -->
-    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex-1 w-full">
       <!-- Loading State -->
       <div v-if="isLoading" class="text-center py-12">
         <div class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400">

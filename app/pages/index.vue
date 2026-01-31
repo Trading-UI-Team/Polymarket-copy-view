@@ -26,17 +26,6 @@ interface PortfolioAPIResponse {
   address: string
   profileUrl: string
   createdAt: number
-  topPositions: Array<{
-    title: string
-    outcome: string
-    size: number
-    avgPrice: number
-    curPrice: number
-    currentValue: number
-    cashPnl: number
-    percentPnl: number | null
-    asset: string
-  }>
 }
 
 // Recent trade response from /api/tasks/recent-trades

@@ -23,6 +23,7 @@ export default defineNuxtConfig({
     polymarketClobUrl: 'https://clob.polymarket.com', // Overridden by NUXT_POLYMARKET_CLOB_URL
     adminUsername: '', // Overridden by NUXT_ADMIN_USERNAME
     adminPassword: '', // Overridden by NUXT_ADMIN_PASSWORD
+    rpcUrl: 'https://polygon-rpc.com', // Overridden by NUXT_RPC_URL
   },
 })
 

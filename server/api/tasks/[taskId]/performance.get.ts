@@ -1,5 +1,5 @@
 import { connectToMongoDB } from '../../../utils/mongodb'
-import { MockTradeRecord } from '../../../models/MockTradeRecord'
+import { TradeRecord } from '../../../models/TradeRecord'
 
 // Performance data point
 interface PerformancePoint {
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
         matchQuery.executedAt = { $gte: startTime }
     }
 
-    const trades = await MockTradeRecord.find(matchQuery)
+    const trades = await TradeRecord.find(matchQuery)
         .sort({ executedAt: 1 })
         .exec()
 
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
 
     // If we're filtering by time range, we need to get the starting realized PnL
     if (rangeMs > 0) {
-        const priorTrades = await MockTradeRecord.aggregate<{ _id: null; total: number }>([
+        const priorTrades = await TradeRecord.aggregate<{ _id: null; total: number }>([
             { $match: { taskId, executedAt: { $lt: startTime }, realizedPnl: { $type: 'number' } } },
             { $group: { _id: null, total: { $sum: '$realizedPnl' } } },
         ])
