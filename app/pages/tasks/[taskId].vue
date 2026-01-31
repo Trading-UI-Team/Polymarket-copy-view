@@ -252,6 +252,8 @@ async function fetchTaskDetail(background = false) {
 onMounted(async () => {
   await fetchTaskDetail()
   await fetchPerformanceData()
+  // Initial trade fetch
+  await fetchMoreTrades(true)
 })
 
 // Auto-refresh every 30 seconds
@@ -266,6 +268,128 @@ onUnmounted(() => {
     clearInterval(refreshInterval.value)
   }
 })
+
+// Position limit logic
+const showAllPositions = ref(false)
+const sortField = ref<keyof PositionData | null>('currentValue')
+const sortDirection = ref<'asc' | 'desc'>('desc')
+
+const sortedPositions = computed(() => {
+  if (!task.value?.positions) return []
+  
+  const positions = [...task.value.positions]
+  
+  if (sortField.value) {
+    positions.sort((a, b) => {
+      let valA = a[sortField.value!] ?? ''
+      let valB = b[sortField.value!] ?? ''
+      
+      // Handle string comparisons case-insensitively
+      if (typeof valA === 'string') valA = valA.toLowerCase()
+      if (typeof valB === 'string') valB = valB.toLowerCase()
+
+      if (valA < valB) return sortDirection.value === 'asc' ? -1 : 1
+      if (valA > valB) return sortDirection.value === 'asc' ? 1 : -1
+      return 0
+    })
+  }
+
+  return positions
+})
+
+const displayedPositions = computed(() => {
+  return sortedPositions.value
+})
+
+function toggleSort(field: keyof PositionData) {
+  if (sortField.value === field) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortDirection.value = 'desc'
+  }
+}
+
+// Trade pagination logic
+const tradeList = ref<TradeRecordData[]>([])
+const tradePage = ref(1)
+const tradeLimit = 20
+const hasMoreTrades = ref(true)
+const isTradesLoading = ref(false)
+const loadMoreTrigger = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+// Setup IntersectionObserver
+onMounted(() => {
+  observer = new IntersectionObserver((entries) => {
+    const entry = entries[0]
+    if (entry && entry.isIntersecting && hasMoreTrades.value && !isTradesLoading.value) {
+      fetchMoreTrades(false)
+    }
+  }, {
+    root: null, // viewport
+    rootMargin: '100px', // load before reaching the absolute bottom
+    threshold: 0.1
+  })
+})
+
+// Observe/unobserve trigger
+watch(loadMoreTrigger, (el) => {
+  if (observer && el) {
+    observer.observe(el)
+  }
+})
+
+// Cleanup
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+})
+
+async function fetchMoreTrades(reset = false) {
+  if (!taskId.value) return
+  if (isTradesLoading.value) return
+  
+  if (reset) {
+    tradePage.value = 1
+    tradeList.value = []
+    hasMoreTrades.value = true
+  }
+  
+  if (!hasMoreTrades.value) return
+
+  isTradesLoading.value = true
+  try {
+    const response = await $fetch<{
+      success: boolean
+      data: TradeRecordData[]
+      pagination: { hasMore: boolean }
+    }>(`/api/tasks/${taskId.value}/trades`, {
+      params: {
+        page: tradePage.value,
+        limit: tradeLimit
+      }
+    })
+    
+    if (response.success && response.data) {
+      if (reset) {
+        tradeList.value = response.data
+      } else {
+        tradeList.value.push(...response.data)
+      }
+      
+      hasMoreTrades.value = response.pagination.hasMore
+      tradePage.value++
+    }
+  } catch (error) {
+    console.error('Failed to fetch trades:', error)
+    toast.error('Failed to load trades')
+  } finally {
+    isTradesLoading.value = false
+  }
+}
 
 // Actions
 
@@ -783,23 +907,101 @@ function formatTimeAgo(timestamp: number): string {
             Current Positions ({{ task.positions.length }})
           </h3>
           <div class="flex flex-col">
-            <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div class="-my-2 sm:-mx-6 lg:-mx-8">
               <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-                <div class="shadow overflow-hidden border border-slate-200 dark:border-slate-700 sm:rounded-lg">
-                  <table v-if="task.positions.length > 0" class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                    <thead class="bg-slate-50 dark:bg-slate-700/50">
+                <div class="shadow border border-slate-200 dark:border-slate-700 sm:rounded-lg overflow-hidden">
+                  <div v-if="task.positions.length > 0" class="max-h-[500px] overflow-y-auto custom-scrollbar">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                    <thead class="bg-slate-50 dark:bg-slate-700/50 sticky top-0 z-10 shadow-sm">
                       <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Market</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Outcome</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Entry Price</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Current Price</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Shares</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Value</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Unrealized PnL</th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('title')"
+                        >
+                          <div class="flex items-center gap-1">
+                            Market
+                            <span v-if="sortField === 'title'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('outcome')"
+                        >
+                           <div class="flex items-center gap-1">
+                            Outcome
+                            <span v-if="sortField === 'outcome'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('avgPrice')"
+                        >
+                           <div class="flex items-center gap-1">
+                            Entry Price
+                            <span v-if="sortField === 'avgPrice'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('curPrice')"
+                        >
+                           <div class="flex items-center gap-1">
+                            Current Price
+                            <span v-if="sortField === 'curPrice'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('size')"
+                        >
+                           <div class="flex items-center gap-1">
+                            Shares
+                            <span v-if="sortField === 'size'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('currentValue')"
+                        >
+                           <div class="flex items-center gap-1">
+                            Value
+                            <span v-if="sortField === 'currentValue'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                        <th 
+                          scope="col" 
+                          class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
+                          @click="toggleSort('cashPnl')"
+                        >
+                           <div class="flex items-center gap-1">
+                            Unrealized PnL
+                            <span v-if="sortField === 'cashPnl'" class="material-symbols-outlined text-sm font-bold">
+                              {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                      <tr v-for="position in task.positions" :key="position.asset">
+                      <tr v-for="position in displayedPositions" :key="position.asset">
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div class="text-sm font-medium text-slate-900 dark:text-white">{{ position.title }}</div>
                         </td>
@@ -843,6 +1045,7 @@ function formatTimeAgo(timestamp: number): string {
                       </tr>
                     </tbody>
                   </table>
+                  </div>
                   <div v-else class="px-6 py-12 text-center">
                     <span class="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500 mb-2">inbox</span>
                     <p class="text-sm text-slate-500 dark:text-slate-400">No open positions</p>
@@ -856,12 +1059,12 @@ function formatTimeAgo(timestamp: number): string {
         <!-- Trade History -->
         <div>
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Trade History ({{ task.recentTrades.length }})</h3>
+            <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Trade History ({{ tradeList.length }})</h3>
           </div>
           <div class="bg-white dark:bg-slate-800 shadow sm:rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div v-if="task.recentTrades.length > 0" class="max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div v-if="tradeList.length > 0" class="max-h-[600px] overflow-y-auto custom-scrollbar">
               <ul role="list" class="divide-y divide-slate-200 dark:divide-slate-700">
-                <li v-for="trade in task.recentTrades" :key="trade.id">
+                <li v-for="trade in tradeList" :key="trade.id">
                   <div class="block hover:bg-slate-50 dark:hover:bg-slate-700/50 transition duration-150 ease-in-out">
                     <div class="px-4 py-4 sm:px-6">
                       <div class="flex items-center justify-between">
@@ -901,6 +1104,24 @@ function formatTimeAgo(timestamp: number): string {
                   </div>
                 </li>
               </ul>
+
+               <!-- Infinite Scroll Trigger / Loading Indicator -->
+               <div ref="loadMoreTrigger" class="p-4 text-center border-t border-slate-200 dark:border-slate-700 min-h-[60px] flex items-center justify-center">
+                  <div v-if="isTradesLoading" class="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400">
+                    <span class="material-symbols-outlined mr-2 text-base animate-spin">progress_activity</span>
+                    Loading more trades...
+                  </div>
+                  <span v-else-if="!hasMoreTrades" class="text-sm text-slate-400 dark:text-slate-500">
+                    No more trades to load
+                  </span>
+               </div>
+            </div>
+            <div v-else-if="isTradesLoading" class="px-6 py-12 text-center">
+                 <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Loading trades...</p>
             </div>
             <div v-else class="px-6 py-12 text-center">
               <span class="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500 mb-2">history</span>
