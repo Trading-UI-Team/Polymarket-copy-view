@@ -82,6 +82,7 @@ async function fetchPortfolios(background = false) {
         pnlAllTime: p.pnlAllTime,
         unrealized: p.unrealized,
         fixedAmount: p.fixedAmount,
+        initialFinance: p.initialFinance,
         profileUrl: p.profileUrl,
       }))
     }
@@ -195,11 +196,12 @@ async function handlePause(id: string) {
     
     if (data?.success !== false) {
       portfolio.status = 'paused'
+      toast.success('Trader paused')
     }
   } catch (error: any) {
     console.error('Failed to pause trader:', error)
     const errorMsg = error.data?.message || error.message || 'Failed to pause trader'
-    alert(`Error: ${errorMsg}`)
+    toast.error(errorMsg)
   } finally {
     isActionLoading.value = null
   }
@@ -218,11 +220,12 @@ async function handleResume(id: string) {
     
     if (data?.success !== false) {
       portfolio.status = 'active'
+      toast.success('Trader resumed')
     }
   } catch (error: any) {
     console.error('Failed to resume trader:', error)
     const errorMsg = error.data?.message || error.message || 'Failed to resume trader'
-    alert(`Error: ${errorMsg}`)
+    toast.error(errorMsg)
   } finally {
     isActionLoading.value = null
   }
@@ -251,10 +254,11 @@ async function confirmDelete() {
     // Refresh portfolios from API
     await fetchPortfolios()
     console.log('Deleted trader:', traderToDelete.value)
+    toast.success('Trader deleted successfully')
   } catch (error: any) {
     console.error('Failed to delete trader:', error)
     const errorMsg = error.data?.message || error.message || 'Failed to delete trader'
-    alert(`Error: ${errorMsg}`)
+    toast.error(errorMsg)
   } finally {
     isDeleting.value = false
     traderToDelete.value = null
@@ -262,19 +266,82 @@ async function confirmDelete() {
   }
 }
 
-function handleSettings(id: string) {
-  // TODO: Open settings modal
-  console.log('Open settings for:', id)
-}
-
+// Edit state
+const isEditMode = ref(false)
+const editingTraderData = ref<any>(null)
+const editingTraderId = ref<string | null>(null)
 // Dialog state
 const showAddTraderDialog = ref(false)
 
-function handleAddProfile() {
+function handleSettings(id: string) {
+  const portfolio = portfolios.value.find(p => p.id === id)
+  if (!portfolio) return
+  
+  editingTraderId.value = id
+  isEditMode.value = true
+  editingTraderData.value = {
+    mode: portfolio.mode,
+    profileUrl: portfolio.profileUrl || '',
+    amountPerTrade: portfolio.fixedAmount || 5,
+    initialCapital: portfolio.initialFinance || 100,
+    // Note: We don't have wallet info here, user might need to re-enter for live mode if they want to change it
+    // Or we leave it empty and valid only if they don't change it (need API support for partial updates)
+    walletAddress: '', 
+    privateKey: ''
+  }
   showAddTraderDialog.value = true
 }
 
+function handleAddProfile() {
+  isEditMode.value = false
+  editingTraderData.value = null
+  editingTraderId.value = null
+  showAddTraderDialog.value = true
+}
+
+async function handleUpdateTrader(data: { taskId?: string; mode: 'mock' | 'live'; form: any }) {
+  if (!editingTraderId.value) return
+  
+  isCreating.value = true
+  const payload = {
+      taskId: editingTraderId.value,
+      type: data.mode,
+      profile: data.form.profileUrl,
+      fixedAmount: data.form.amountPerTrade,
+      initialAmount: data.form.initialCapital || 0,
+      myWalletAddress: data.form.walletAddress,
+      privateKey: data.form.privateKey
+  }
+  
+  try {
+     const response = await $fetch<{ success: boolean; data: any }>('/api/traders/update', {
+      method: 'POST',
+      body: payload
+    })
+
+    if (response.success) {
+      await fetchPortfolios()
+      showAddTraderDialog.value = false
+      toast.success('Trader updated successfully')
+    } else {
+        throw new Error('Failed to update trader')
+    }
+  } catch (error: any) {
+    console.error('Failed to update trader:', error)
+    const errorMsg = error.data?.message || error.message || 'Failed to update trader.'
+    toast.error(errorMsg)
+  } finally {
+    isCreating.value = false
+    isEditMode.value = false
+    editingTraderId.value = null
+    editingTraderData.value = null
+  }
+}
+
 const isCreating = ref(false)
+
+import { useToast } from 'vue-toastification'
+const toast = useToast()
 
 async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
   console.log('Creating trader:', data)
@@ -295,10 +362,11 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
       body: payload
     })
 
-    if (response.success) {
+      if (response.success) {
       // Refresh portfolios from API to get the latest data
       await fetchPortfolios()
       showAddTraderDialog.value = false // Close dialog on success
+      toast.success('Trader created successfully!')
     } else {
        throw new Error('Failed to create trader')
     }
@@ -306,7 +374,7 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
     console.error('Failed to create trader:', error)
     // Show a more friendly error message
     const errorMsg = error.data?.message || error.message || 'Failed to connect to Polymarket API.'
-    alert(`Error: ${errorMsg}`)
+    toast.error(errorMsg)
   } finally {
     isCreating.value = false
   }
@@ -459,7 +527,10 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
       <AddTraderDialog
         v-model="showAddTraderDialog"
         :loading="isCreating"
+        :edit-mode="isEditMode"
+        :initial-data="editingTraderData"
         @create="handleCreateTrader"
+        @update="handleUpdateTrader"
       />
 
       <!-- Confirm Delete Dialog -->

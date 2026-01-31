@@ -12,6 +12,7 @@ export interface Portfolio {
   pnlAllTime: number
   unrealized: number
   fixedAmount?: number
+  initialFinance?: number
   profileUrl?: string
 }
 
@@ -78,6 +79,31 @@ function formatCurrency(value: number): string {
           >
             {{ portfolio.mode === 'mock' ? 'Mock' : 'Live' }}
           </span>
+        </div>
+        
+        <!-- Settings Button (Top Right) -->
+        <div class="relative group/tooltip">
+          <button
+            :disabled="portfolio.status === 'active'"
+            :class="[
+              'p-1.5 rounded-full transition-all duration-200',
+              portfolio.status === 'active'
+                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                : 'text-slate-400 dark:text-slate-500 hover:text-primary'
+            ]"
+            @click.prevent.stop="emit('settings', portfolio.id)"
+          >
+            <span class="material-symbols-outlined text-[20px]">settings</span>
+          </button>
+          
+          <!-- Tooltip -->
+          <div 
+            v-if="portfolio.status === 'active'"
+            class="absolute top-full right-0 mt-2 px-2 py-1 text-xs font-medium text-white bg-slate-800 rounded shadow-lg whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10"
+          >
+            Pause to edit settings
+            <div class="absolute bottom-full right-3 -mb-1 border-4 border-transparent border-b-slate-800"></div>
+          </div>
         </div>
       </div>
 
@@ -219,6 +245,7 @@ function formatCurrency(value: number): string {
         >
           <span class="material-symbols-outlined text-[20px]">play_circle</span>
         </button>
+
         <button
           class="text-slate-600 dark:text-slate-300 hover:text-danger dark:hover:text-danger transition-colors p-1"
           title="Delete Profile"

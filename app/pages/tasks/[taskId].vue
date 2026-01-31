@@ -268,6 +268,9 @@ onUnmounted(() => {
 })
 
 // Actions
+import { useToast } from 'vue-toastification'
+const toast = useToast()
+
 const isActionLoading = ref(false)
 
 async function toggleBotStatus() {
@@ -281,16 +284,18 @@ async function toggleBotStatus() {
         body: { taskId: task.value.id }
       })
       task.value.status = 'paused'
+      toast.success('Trader paused')
     } else {
       await $fetch('/api/traders/restart', {
         method: 'POST',
         body: { taskId: task.value.id }
       })
       task.value.status = 'active'
+      toast.success('Trader resumed')
     }
   } catch (error: any) {
     console.error('Failed to toggle status:', error)
-    alert(`Error: ${error.data?.message || error.message || 'Failed to toggle status'}`)
+    toast.error(error.data?.message || error.message || 'Failed to toggle status')
   } finally {
     isActionLoading.value = false
   }
@@ -299,6 +304,64 @@ async function toggleBotStatus() {
 // Confirm Dialog
 const showConfirmDelete = ref(false)
 const isDeleting = ref(false)
+
+// Edit Dialog
+const showEditDialog = ref(false)
+const isUpdating = ref(false)
+const editingTraderData = ref<any>(null)
+
+function openSettings() {
+  if (!task.value) return
+  
+  editingTraderData.value = {
+    mode: task.value.mode,
+    profileUrl: task.value.profileUrl || '',
+    amountPerTrade: task.value.fixedAmount || 5,
+    initialCapital: task.value.initialFinance || 100,
+    walletAddress: task.value.myWalletAddress || '', 
+    privateKey: '**************************' // Dont expose real private key, just a placeholder to indicate it exists
+  }
+  showEditDialog.value = true
+}
+
+async function handleUpdateTrader(data: { taskId?: string; mode: 'mock' | 'live'; form: any }) {
+  if (!task.value) return
+  
+  isUpdating.value = true
+  // Check if private key is the placeholder, if so, dont send it to avoid overwriting with stars
+  const isPlaceholderKey = data.form.privateKey === '**************************'
+  
+  const payload = {
+      taskId: task.value.id,
+      type: data.mode,
+      profile: data.form.profileUrl,
+      fixedAmount: data.form.amountPerTrade,
+      initialAmount: data.form.initialCapital || 0,
+      myWalletAddress: data.form.walletAddress,
+      privateKey: isPlaceholderKey ? undefined : data.form.privateKey
+  }
+  
+  try {
+     const response = await $fetch<{ success: boolean; data: any }>('/api/traders/update', {
+      method: 'POST',
+      body: payload
+    })
+
+    if (response.success) {
+      await fetchTaskDetail()
+      showEditDialog.value = false
+      toast.success('Trader updated successfully')
+    } else {
+        throw new Error('Failed to update trader')
+    }
+  } catch (error: any) {
+    console.error('Failed to update trader:', error)
+    const errorMsg = error.data?.message || error.message || 'Failed to update trader.'
+    toast.error(errorMsg)
+  } finally {
+    isUpdating.value = false
+  }
+}
 
 function deleteBot() {
   showConfirmDelete.value = true
@@ -313,10 +376,12 @@ async function handleConfirmDelete() {
       method: 'POST',
       body: { taskId: task.value.id }
     })
+    toast.success('Trader deleted successfully')
     navigateTo('/')
   } catch (error: any) {
     console.error('Failed to delete trader:', error)
-    alert(`Error: ${error.data?.message || error.message || 'Failed to delete trader'}`)
+    const errorMsg = error.data?.message || error.message || 'Failed to delete trader'
+    toast.error(errorMsg)
   } finally {
     isDeleting.value = false
   }
@@ -482,6 +547,21 @@ function formatTimeAgo(timestamp: number): string {
             </button>
             <button
               type="button"
+              class="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="[
+                 task.status === 'active' 
+                   ? 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'
+              ]"
+              :disabled="task.status === 'active'"
+              title="Settings (Pause to edit)"
+              @click="openSettings"
+            >
+              <span class="material-symbols-outlined mr-2 text-base">settings</span>
+              Settings
+            </button>
+            <button
+              type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
               @click="deleteBot"
             >
@@ -489,6 +569,15 @@ function formatTimeAgo(timestamp: number): string {
             </button>
           </div>
         </div>
+
+        <!-- Edit Dialog -->
+        <AddTraderDialog
+          v-model="showEditDialog"
+          :loading="isUpdating"
+          :edit-mode="true"
+          :initial-data="editingTraderData"
+          @update="handleUpdateTrader"
+        />
 
         <!-- Confirm Dialog -->
         <ConfirmDialog

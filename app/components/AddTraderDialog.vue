@@ -14,14 +14,24 @@ interface LiveFormData {
   privateKey: string
 }
 
-const { modelValue = false, loading = false } = defineProps<{
+const props = defineProps<{
   modelValue?: boolean
   loading?: boolean
+  editMode?: boolean
+  initialData?: {
+    mode: TradingMode
+    profileUrl: string
+    amountPerTrade: number
+    initialCapital?: number
+    walletAddress?: string
+    privateKey?: string
+  } | null
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   create: [data: { mode: TradingMode; form: MockFormData | LiveFormData }]
+  update: [data: { taskId?: string; mode: TradingMode; form: MockFormData | LiveFormData }]
 }>()
 
 // Active tab state
@@ -49,26 +59,47 @@ function closeDialog() {
   emit('update:modelValue', false)
 }
 
-function handleCreate() {
+function handleSubmit() {
   const formData = activeTab.value === 'mock' ? { ...mockForm } : { ...liveForm }
-  emit('create', { mode: activeTab.value, form: formData })
+  if (props.editMode) {
+    emit('update', { mode: activeTab.value, form: formData })
+  } else {
+    emit('create', { mode: activeTab.value, form: formData })
+  }
 }
 
 function resetForm() {
-  mockForm.profileUrl = ''
-  mockForm.amountPerTrade = 5
-  mockForm.initialCapital = 100
-  liveForm.profileUrl = ''
-  liveForm.amountPerTrade = 5
-  liveForm.walletAddress = ''
-  liveForm.privateKey = ''
-  activeTab.value = 'mock'
+  if (props.editMode && props.initialData) {
+    // Populate form with initial data
+    activeTab.value = props.initialData.mode
+    
+    if (props.initialData.mode === 'mock') {
+      mockForm.profileUrl = props.initialData.profileUrl
+      mockForm.amountPerTrade = props.initialData.amountPerTrade
+      mockForm.initialCapital = props.initialData.initialCapital || 100
+    } else {
+      liveForm.profileUrl = props.initialData.profileUrl
+      liveForm.amountPerTrade = props.initialData.amountPerTrade
+      liveForm.walletAddress = props.initialData.walletAddress || ''
+      liveForm.privateKey = props.initialData.privateKey || ''
+    }
+  } else {
+    // Reset to default
+    mockForm.profileUrl = ''
+    mockForm.amountPerTrade = 5
+    mockForm.initialCapital = 100
+    liveForm.profileUrl = ''
+    liveForm.amountPerTrade = 5
+    liveForm.walletAddress = ''
+    liveForm.privateKey = ''
+    activeTab.value = 'mock'
+  }
   showPrivateKey.value = false
 }
 
-// Reset form when dialog closes
-watch(() => modelValue, (newVal) => {
-  if (!newVal) {
+// Reset form when dialog opens
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
     resetForm()
   }
 
@@ -76,6 +107,13 @@ watch(() => modelValue, (newVal) => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = newVal ? 'hidden' : ''
   }
+})
+
+// Build computed title
+const dialogTitle = computed(() => props.editMode ? 'Edit Copy-Trader' : 'Add New Copy-Trader')
+const submitButtonText = computed(() => {
+  if (props.loading) return props.editMode ? 'Updating...' : 'Creating...'
+  return props.editMode ? 'Update Trader' : 'Create Trader'
 })
 
 // Cleanup on unmount
@@ -113,9 +151,9 @@ onUnmounted(() => {
             <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <div class="flex items-center gap-3">
                 <div class="p-2 rounded-lg" style="background-color: rgba(37, 99, 235, 0.1);">
-                  <span class="material-symbols-outlined" style="color: #2563EB;">person_add</span>
+                  <span class="material-symbols-outlined" style="color: #2563EB;">{{ editMode ? 'edit' : 'person_add' }}</span>
                 </div>
-                <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Add New Copy-Trader</h2>
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-white">{{ dialogTitle }}</h2>
               </div>
               <button
                 class="text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 transition-colors"
@@ -130,11 +168,13 @@ onUnmounted(() => {
               <!-- Tab Buttons -->
               <div class="flex space-x-1 rounded-lg bg-slate-100 dark:bg-slate-700 p-1 mb-6 border border-slate-200 dark:border-slate-600">
                 <button
+                  :disabled="editMode"
                   :class="[
                     'w-full rounded-md py-2.5 text-sm font-medium leading-5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50',
                     activeTab === 'mock'
                       ? 'bg-white dark:bg-slate-600 shadow-sm text-primary'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+                    editMode && activeTab !== 'mock' ? 'opacity-50 cursor-not-allowed' : ''
                   ]"
                   @click="activeTab = 'mock'"
                 >
@@ -144,11 +184,13 @@ onUnmounted(() => {
                   </div>
                 </button>
                 <button
+                  :disabled="editMode"
                   :class="[
                     'w-full rounded-md py-2.5 text-sm font-medium leading-5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50',
                     activeTab === 'live'
                       ? 'bg-white dark:bg-slate-600 shadow-sm text-primary'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+                    editMode && activeTab !== 'live' ? 'opacity-50 cursor-not-allowed' : ''
                   ]"
                   @click="activeTab = 'live'"
                 >
@@ -204,7 +246,11 @@ onUnmounted(() => {
                           id="mock-capital"
                           v-model.number="mockForm.initialCapital"
                           type="number"
-                          class="block w-full pl-7 pr-12 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
+                          :disabled="editMode"
+                          :class="[
+                            'block w-full pl-7 pr-12 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary',
+                            editMode ? 'opacity-50 cursor-not-allowed' : ''
+                          ]"
                           placeholder="100.00"
                         />
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -359,11 +405,11 @@ onUnmounted(() => {
                 :disabled="loading"
                 class="px-4 py-2 text-sm font-medium text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 style="background-color: #2563EB; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);"
-                @click="handleCreate"
+                @click="handleSubmit"
               >
                 <span v-if="loading" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
                 <span v-else class="material-symbols-outlined text-sm">check</span>
-                {{ loading ? 'Creating...' : 'Create Trader' }}
+                {{ submitButtonText }}
               </button>
             </div>
           </div>
