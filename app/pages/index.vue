@@ -340,7 +340,8 @@ async function handleUpdateTrader(data: { taskId?: string; mode: 'mock' | 'live'
 
 const isCreating = ref(false)
 
-import { useToast } from 'vue-toastification'
+import pkg from 'vue-toastification'
+const { useToast } = pkg as any
 const toast = useToast()
 
 async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {

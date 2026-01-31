@@ -268,7 +268,8 @@ onUnmounted(() => {
 })
 
 // Actions
-import { useToast } from 'vue-toastification'
+import pkg from 'vue-toastification'
+const { useToast } = pkg as any
 const toast = useToast()
 
 const isActionLoading = ref(false)
