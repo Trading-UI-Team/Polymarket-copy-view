@@ -906,11 +906,8 @@ function formatTimeAgo(timestamp: number): string {
           <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white mb-4">
             Current Positions ({{ task.positions.length }})
           </h3>
-          <div class="flex flex-col">
-            <div class="-my-2 sm:-mx-6 lg:-mx-8">
-              <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-                <div class="shadow border border-slate-200 dark:border-slate-700 sm:rounded-lg overflow-hidden">
-                  <div v-if="task.positions.length > 0" class="max-h-[500px] overflow-y-auto custom-scrollbar">
+          <div class="shadow border border-slate-200 dark:border-slate-700 sm:rounded-lg overflow-hidden w-full">
+                  <div v-if="task.positions.length > 0" class="max-h-[500px] overflow-y-auto overflow-x-auto md:overflow-x-hidden custom-scrollbar">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead class="bg-slate-50 dark:bg-slate-700/50 sticky top-0 z-10 shadow-sm">
                       <tr>
@@ -1002,8 +999,8 @@ function formatTimeAgo(timestamp: number): string {
                     </thead>
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                       <tr v-for="position in displayedPositions" :key="position.asset">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <div class="text-sm font-medium text-slate-900 dark:text-white">{{ position.title }}</div>
+                        <td class="px-6 py-4">
+                          <div class="text-sm font-medium text-slate-900 dark:text-white whitespace-normal max-w-[200px] md:max-w-[300px] break-words">{{ position.title }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                           <span
@@ -1050,9 +1047,6 @@ function formatTimeAgo(timestamp: number): string {
                     <span class="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500 mb-2">inbox</span>
                     <p class="text-sm text-slate-500 dark:text-slate-400">No open positions</p>
                   </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 

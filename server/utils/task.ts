@@ -197,6 +197,7 @@ export async function fetchLivePositions(targetAddress: string, taskId: string):
     try {
         const positionsUrl = `https://data-api.polymarket.com/positions?user=${targetAddress}`
         const res = await fetch(positionsUrl)
+
         if (!res.ok) {
             console.error(`[task-util] Failed to fetch live positions: ${res.status}`)
             return []
