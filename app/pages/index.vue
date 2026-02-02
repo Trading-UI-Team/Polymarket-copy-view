@@ -352,7 +352,11 @@ async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
       fixedAmount: data.form.amountPerTrade,
       initialAmount: data.form.initialCapital || 0,
       myWalletAddress: data.form.walletAddress,
-      privateKey: data.form.privateKey
+      privateKey: data.form.privateKey,
+      walletType: data.form.walletType,
+      builderApiKey: data.form.builderApiKey,
+      builderSecret: data.form.builderSecret,
+      builderPassphrase: data.form.builderPassphrase
     }
 
     const response = await $fetch<{ success: boolean; data: any }>('/api/traders/create', {

@@ -6,7 +6,11 @@ export default defineEventHandler(async (event) => {
     fixedAmount,
     initialAmount,
     privateKey,
-    myWalletAddress
+    myWalletAddress,
+    walletType,
+    builderApiKey,
+    builderSecret,
+    builderPassphrase
   } = body
 
   // 1. Crawler/Fetcher Logic: Fetch HTML and extract Address via Regex
@@ -58,7 +62,11 @@ export default defineEventHandler(async (event) => {
     fixedAmount,
     initialAmount,
     privateKey,
-    myWalletAddress
+    myWalletAddress,
+    walletType,
+    builderApiKey,
+    builderSecret,
+    builderPassphrase
   }
 
   // connect redis: use env REDIS_URL

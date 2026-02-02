@@ -7,11 +7,17 @@ interface MockFormData {
   initialCapital: number
 }
 
+type WalletType = 'EOA' | 'ProxyWallet'
+
 interface LiveFormData {
   profileUrl: string
   amountPerTrade: number
   walletAddress: string
   privateKey: string
+  walletType: WalletType
+  builderApiKey?: string
+  builderSecret?: string
+  builderPassphrase?: string
 }
 
 const props = defineProps<{
@@ -25,6 +31,10 @@ const props = defineProps<{
     initialCapital?: number
     walletAddress?: string
     privateKey?: string
+    walletType?: WalletType
+    builderApiKey?: string
+    builderSecret?: string
+    builderPassphrase?: string
   } | null
 }>()
 
@@ -49,6 +59,10 @@ const liveForm = reactive<LiveFormData>({
   amountPerTrade: 5,
   walletAddress: '',
   privateKey: '',
+  walletType: 'EOA',
+  builderApiKey: '',
+  builderSecret: '',
+  builderPassphrase: '',
 })
 
 // Toggle password visibility
@@ -62,17 +76,22 @@ const errors = reactive({
   live: {
     profileUrl: '',
     walletAddress: '',
-    privateKey: ''
+    privateKey: '',
+    builderApiKey: '',
+    builderSecret: '',
+    builderPassphrase: ''
   }
 })
 
 function validateForm() {
   let isValid = true
   // Reset errors
-  errors.mock.profileUrl = ''
   errors.live.profileUrl = ''
   errors.live.walletAddress = ''
   errors.live.privateKey = ''
+  errors.live.builderApiKey = ''
+  errors.live.builderSecret = ''
+  errors.live.builderPassphrase = ''
 
   if (activeTab.value === 'mock') {
     if (!mockForm.profileUrl) {
@@ -94,6 +113,20 @@ function validateForm() {
     if (!liveForm.privateKey) {
       errors.live.privateKey = 'Private key is required'
       isValid = false
+    }
+    if (liveForm.walletType === 'ProxyWallet') {
+      if (!liveForm.builderApiKey) {
+        errors.live.builderApiKey = 'API Key is required'
+        isValid = false
+      }
+      if (!liveForm.builderSecret) {
+        errors.live.builderSecret = 'Secret is required'
+        isValid = false
+      }
+      if (!liveForm.builderPassphrase) {
+        errors.live.builderPassphrase = 'Passphrase is required'
+        isValid = false
+      }
     }
   }
   return isValid
@@ -129,6 +162,10 @@ function resetForm() {
       liveForm.amountPerTrade = props.initialData.amountPerTrade
       liveForm.walletAddress = props.initialData.walletAddress || ''
       liveForm.privateKey = props.initialData.privateKey || ''
+      liveForm.walletType = props.initialData.walletType || 'EOA'
+      liveForm.builderApiKey = props.initialData.builderApiKey || ''
+      liveForm.builderSecret = props.initialData.builderSecret || ''
+      liveForm.builderPassphrase = props.initialData.builderPassphrase || ''
     }
   } else {
     // Reset to default
@@ -139,6 +176,10 @@ function resetForm() {
     liveForm.amountPerTrade = 5
     liveForm.walletAddress = ''
     liveForm.privateKey = ''
+    liveForm.walletType = 'EOA'
+    liveForm.builderApiKey = ''
+    liveForm.builderSecret = ''
+    liveForm.builderPassphrase = ''
     activeTab.value = 'mock'
   }
   showPrivateKey.value = false
@@ -147,6 +188,9 @@ function resetForm() {
   errors.live.profileUrl = ''
   errors.live.walletAddress = ''
   errors.live.privateKey = ''
+  errors.live.builderApiKey = ''
+  errors.live.builderSecret = ''
+  errors.live.builderPassphrase = ''
 }
 
 // Reset form when dialog opens
@@ -400,11 +444,43 @@ onUnmounted(() => {
 
                   <!-- Wallet Section -->
                   <div class="border-t border-slate-200 dark:border-slate-700 pt-5 mt-2">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                      Wallet Configuration
+                    </label>
+                    
+                    <!-- Wallet Type Tab -->
+                    <div class="flex space-x-1 rounded-lg bg-slate-100 dark:bg-slate-700/50 p-1 mb-5 border border-slate-200 dark:border-slate-600">
+                      <button
+                        type="button"
+                        :class="[
+                          'w-full rounded-md py-1.5 text-xs font-medium transition-all duration-200 focus:outline-none',
+                          liveForm.walletType === 'EOA'
+                            ? 'bg-white dark:bg-slate-600 shadow-sm text-primary'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        ]"
+                        @click="liveForm.walletType = 'EOA'"
+                      >
+                        EOA
+                      </button>
+                      <button
+                        type="button"
+                        :class="[
+                          'w-full rounded-md py-1.5 text-xs font-medium transition-all duration-200 focus:outline-none',
+                          liveForm.walletType === 'ProxyWallet'
+                            ? 'bg-white dark:bg-slate-600 shadow-sm text-primary'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        ]"
+                        @click="liveForm.walletType = 'ProxyWallet'"
+                      >
+                        ProxyWallet
+                      </button>
+                    </div>
+
                     <div class="space-y-5">
                       <!-- Wallet Address -->
                       <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="wallet-address">
-                          Wallet Address (Public)
+                          Wallet Address (Public) <span class="text-red-500">*</span>
                         </label>
                         <div class="relative rounded-md shadow-sm">
                           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -427,10 +503,85 @@ onUnmounted(() => {
                         </p>
                       </div>
 
+                      <!-- ProxyWallet Extra Fields -->
+                      <Transition
+                        enter-active-class="transition duration-200 ease-out"
+                        enter-from-class="opacity-0 -translate-y-2"
+                        enter-to-class="opacity-100 translate-y-0"
+                        leave-active-class="transition duration-150 ease-in"
+                        leave-from-class="opacity-100 translate-y-0"
+                        leave-to-class="opacity-0 -translate-y-2"
+                      >
+                        <div v-if="liveForm.walletType === 'ProxyWallet'" class="space-y-5 pt-2">
+                          <!-- API Key -->
+                          <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="builder-api-key">
+                              Builder API Key <span class="text-red-500">*</span>
+                            </label>
+                            <input
+                              id="builder-api-key"
+                              v-model="liveForm.builderApiKey"
+                              type="text"
+                              :class="[
+                                'block w-full px-3 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                                errors.live.builderApiKey ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                              ]"
+                              placeholder="Enter API Key"
+                            />
+                            <p v-if="errors.live.builderApiKey" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                              <span class="material-symbols-outlined text-xs">error</span>
+                              {{ errors.live.builderApiKey }}
+                            </p>
+                          </div>
+
+                          <!-- Secret -->
+                          <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="builder-secret">
+                              Builder Secret <span class="text-red-500">*</span>
+                            </label>
+                            <input
+                              id="builder-secret"
+                              v-model="liveForm.builderSecret"
+                              type="password"
+                              :class="[
+                                'block w-full px-3 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                                errors.live.builderSecret ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                              ]"
+                              placeholder="Enter Secret"
+                            />
+                            <p v-if="errors.live.builderSecret" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                              <span class="material-symbols-outlined text-xs">error</span>
+                              {{ errors.live.builderSecret }}
+                            </p>
+                          </div>
+
+                          <!-- Passphrase -->
+                          <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="builder-passphrase">
+                              Builder Passphrase <span class="text-red-500">*</span>
+                            </label>
+                            <input
+                              id="builder-passphrase"
+                              v-model="liveForm.builderPassphrase"
+                              type="password"
+                              :class="[
+                                'block w-full px-3 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                                errors.live.builderPassphrase ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                              ]"
+                              placeholder="Enter Passphrase"
+                            />
+                            <p v-if="errors.live.builderPassphrase" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                              <span class="material-symbols-outlined text-xs">error</span>
+                              {{ errors.live.builderPassphrase }}
+                            </p>
+                          </div>
+                        </div>
+                      </Transition>
+
                       <!-- Private Key -->
                       <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between" for="private-key">
-                          <span>Private Key</span>
+                          <span>Private Key <span class="text-red-500">*</span></span>
                           <span class="text-xs text-slate-500 font-normal">Never shared with copy-trader</span>
                         </label>
                         <div class="relative rounded-md shadow-sm group">

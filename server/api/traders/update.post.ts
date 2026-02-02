@@ -7,7 +7,11 @@ export default defineEventHandler(async (event) => {
         fixedAmount,
         initialAmount,
         privateKey,
-        myWalletAddress
+        myWalletAddress,
+        walletType,
+        builderApiKey,
+        builderSecret,
+        builderPassphrase
     } = body
 
     if (!taskId) {
@@ -58,7 +62,11 @@ export default defineEventHandler(async (event) => {
         fixedAmount,
         initialAmount,
         privateKey,
-        myWalletAddress
+        myWalletAddress,
+        walletType,
+        builderApiKey,
+        builderSecret,
+        builderPassphrase
     }
 
     const { publishTask, subscribeNotifications } = await useRedis()

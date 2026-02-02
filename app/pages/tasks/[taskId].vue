@@ -60,6 +60,10 @@ interface TaskDetail {
   myWalletAddress: string
   profileUrl: string
   createdAt: number
+  walletType?: 'EOA' | 'ProxyWallet'
+  builderApiKey?: string
+  builderSecret?: string
+  builderPassphrase?: string
   positions: PositionData[]
   recentTrades: TradeRecordData[]
 }
@@ -443,7 +447,11 @@ function openSettings() {
     amountPerTrade: task.value.fixedAmount || 5,
     initialCapital: task.value.initialFinance || 100,
     walletAddress: task.value.myWalletAddress || '', 
-    privateKey: '**************************' // Dont expose real private key, just a placeholder to indicate it exists
+    privateKey: '**************************', // Dont expose real private key, just a placeholder to indicate it exists
+    walletType: task.value.walletType || 'EOA',
+    builderApiKey: task.value.builderApiKey || '',
+    builderSecret: task.value.builderSecret || '',
+    builderPassphrase: task.value.builderPassphrase || ''
   }
   showEditDialog.value = true
 }
@@ -462,7 +470,11 @@ async function handleUpdateTrader(data: { taskId?: string; mode: 'mock' | 'live'
       fixedAmount: data.form.amountPerTrade,
       initialAmount: data.form.initialCapital || 0,
       myWalletAddress: data.form.walletAddress,
-      privateKey: isPlaceholderKey ? undefined : data.form.privateKey
+      privateKey: isPlaceholderKey ? undefined : data.form.privateKey,
+      walletType: data.form.walletType,
+      builderApiKey: data.form.builderApiKey,
+      builderSecret: data.form.builderSecret,
+      builderPassphrase: data.form.builderPassphrase
   }
   
   try {
