@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ToastContainer from '~/components/ToastContainer.vue'
 // Add Google Fonts and Material Symbols
 useHead({
   link: [
@@ -18,7 +19,9 @@ useHead({
   <div>
     <NuxtRouteAnnouncer />
     <NuxtPage />
-    <ToastContainer />
+    <ClientOnly>
+      <ToastContainer />
+    </ClientOnly>
   </div>
 </template>
 

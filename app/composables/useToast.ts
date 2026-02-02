@@ -1,4 +1,4 @@
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 
 interface Toast {
   id: number

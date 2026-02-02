@@ -393,10 +393,7 @@ async function fetchMoreTrades(reset = false) {
 
 // Actions
 
-const toast = { 
-  success: (msg: any) => console.log('Success:', msg), 
-  error: (msg: any) => console.error('Error:', msg) 
-}
+const toast = useToast()
 
 const isActionLoading = ref(false)
 

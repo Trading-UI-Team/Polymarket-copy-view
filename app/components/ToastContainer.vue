@@ -1,10 +1,10 @@
 <script setup lang="ts">
 const { toasts, remove } = useToast()
+onMounted(() => console.log('ToastContainer mounted', toasts.value))
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+  <div class="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
       <TransitionGroup
         enter-active-class="transition duration-300 ease-out"
         enter-from-class="transform translate-x-12 opacity-0"
@@ -45,5 +45,4 @@ const { toasts, remove } = useToast()
         </div>
       </TransitionGroup>
     </div>
-  </Teleport>
 </template>

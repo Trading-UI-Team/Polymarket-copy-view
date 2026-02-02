@@ -342,7 +342,8 @@ const isCreating = ref(false)
 const toast = useToast()
 
 async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
-  console.log('Creating trader:', data)
+  console.log('Creating trader and calling toast.success', data)
+  toast.success('Triggering toast manually for creating...')
   isCreating.value = true
   
   try {
