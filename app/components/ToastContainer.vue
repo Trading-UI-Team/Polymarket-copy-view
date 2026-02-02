@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { toasts, remove } = useToast()
-onMounted(() => console.log('ToastContainer mounted', toasts.value))
 </script>
 
 <template>
