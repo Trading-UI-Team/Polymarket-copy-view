@@ -54,12 +54,59 @@ const liveForm = reactive<LiveFormData>({
 // Toggle password visibility
 const showPrivateKey = ref(false)
 
+// Validation errors
+const errors = reactive({
+  mock: {
+    profileUrl: ''
+  },
+  live: {
+    profileUrl: '',
+    walletAddress: '',
+    privateKey: ''
+  }
+})
+
+function validateForm() {
+  let isValid = true
+  // Reset errors
+  errors.mock.profileUrl = ''
+  errors.live.profileUrl = ''
+  errors.live.walletAddress = ''
+  errors.live.privateKey = ''
+
+  if (activeTab.value === 'mock') {
+    if (!mockForm.profileUrl) {
+      errors.mock.profileUrl = 'Profile URL is required'
+      isValid = false
+    } else if (!mockForm.profileUrl.startsWith('http')) {
+      errors.mock.profileUrl = 'Please enter a valid URL'
+      isValid = false
+    }
+  } else {
+    if (!liveForm.profileUrl) {
+      errors.live.profileUrl = 'Profile URL is required'
+      isValid = false
+    }
+    if (!liveForm.walletAddress) {
+      errors.live.walletAddress = 'Wallet address is required'
+      isValid = false
+    }
+    if (!liveForm.privateKey) {
+      errors.live.privateKey = 'Private key is required'
+      isValid = false
+    }
+  }
+  return isValid
+}
+
 // Methods
 function closeDialog() {
   emit('update:modelValue', false)
 }
 
 function handleSubmit() {
+  if (!validateForm()) return
+
   const formData = activeTab.value === 'mock' ? { ...mockForm } : { ...liveForm }
   if (props.editMode) {
     emit('update', { mode: activeTab.value, form: formData })
@@ -95,6 +142,11 @@ function resetForm() {
     activeTab.value = 'mock'
   }
   showPrivateKey.value = false
+  // Reset errors
+  errors.mock.profileUrl = ''
+  errors.live.profileUrl = ''
+  errors.live.walletAddress = ''
+  errors.live.privateKey = ''
 }
 
 // Reset form when dialog opens
@@ -226,10 +278,17 @@ onUnmounted(() => {
                         id="mock-url"
                         v-model="mockForm.profileUrl"
                         type="url"
-                        class="block w-full pl-10 pr-3 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white dark:placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary"
+                        :class="[
+                          'block w-full pl-10 pr-3 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white dark:placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                          errors.mock.profileUrl ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                        ]"
                         placeholder="https://polymarket.com/profile/..."
                       />
                     </div>
+                    <p v-if="errors.mock.profileUrl" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-xs">error</span>
+                      {{ errors.mock.profileUrl }}
+                    </p>
                   </div>
 
                   <!-- Capital & Amount Grid -->
@@ -304,10 +363,17 @@ onUnmounted(() => {
                         id="live-url"
                         v-model="liveForm.profileUrl"
                         type="url"
-                        class="block w-full pl-10 pr-3 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white dark:placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary"
+                        :class="[
+                          'block w-full pl-10 pr-3 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white dark:placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                          errors.live.profileUrl ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                        ]"
                         placeholder="https://polymarket.com/profile/..."
                       />
                     </div>
+                    <p v-if="errors.live.profileUrl" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-xs">error</span>
+                      {{ errors.live.profileUrl }}
+                    </p>
                   </div>
 
                   <!-- Amount per trade -->
@@ -348,10 +414,17 @@ onUnmounted(() => {
                             id="wallet-address"
                             v-model="liveForm.walletAddress"
                             type="text"
-                            class="block w-full pl-10 pr-3 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white font-mono text-xs focus:ring-2 focus:ring-primary focus:border-primary"
+                            :class="[
+                              'block w-full pl-10 pr-3 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white font-mono text-xs focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                              errors.live.walletAddress ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                            ]"
                             placeholder="0x..."
                           />
                         </div>
+                        <p v-if="errors.live.walletAddress" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-xs">error</span>
+                          {{ errors.live.walletAddress }}
+                        </p>
                       </div>
 
                       <!-- Private Key -->
@@ -368,7 +441,10 @@ onUnmounted(() => {
                             id="private-key"
                             v-model="liveForm.privateKey"
                             :type="showPrivateKey ? 'text' : 'password'"
-                            class="block w-full pl-10 pr-10 py-2 sm:text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white font-mono text-xs focus:ring-2 focus:ring-primary focus:border-primary"
+                            :class="[
+                              'block w-full pl-10 pr-10 py-2 sm:text-sm border rounded-md dark:bg-slate-700 dark:text-white font-mono text-xs focus:ring-2 focus:ring-primary focus:border-primary transition-colors',
+                              errors.live.privateKey ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'
+                            ]"
                             placeholder="Paste your private key securely"
                           />
                           <button
@@ -381,6 +457,10 @@ onUnmounted(() => {
                             </span>
                           </button>
                         </div>
+                        <p v-if="errors.live.privateKey" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-xs">error</span>
+                          {{ errors.live.privateKey }}
+                        </p>
                         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           Required for signing automated transactions on Polygon.
                         </p>

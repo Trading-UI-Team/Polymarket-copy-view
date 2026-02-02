@@ -339,11 +339,7 @@ async function handleUpdateTrader(data: { taskId?: string; mode: 'mock' | 'live'
 }
 
 const isCreating = ref(false)
-
-const toast = { 
-  success: (msg: any) => console.log('Success:', msg), 
-  error: (msg: any) => console.error('Error:', msg) 
-}
+const toast = useToast()
 
 async function handleCreateTrader(data: { mode: 'mock' | 'live'; form: any }) {
   console.log('Creating trader:', data)
