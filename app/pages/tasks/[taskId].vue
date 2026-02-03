@@ -879,7 +879,7 @@ function formatTimeAgo(timestamp: number): string {
         <div class="mb-8">
           <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Portfolio Performance</h3>
+              <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Realized Profit/Loss</h3>
               <!-- Time Range Selector -->
               <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                 <button

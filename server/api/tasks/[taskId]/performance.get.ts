@@ -4,8 +4,7 @@ import { TradeRecord } from '../../../models/TradeRecord'
 // Performance data point
 interface PerformancePoint {
     timestamp: number
-    equity: number
-    realizedPnl: number
+    profit: number  // Cumulative realized profit from SELL and REDEEM
 }
 
 // Time range in milliseconds
@@ -37,7 +36,7 @@ export default defineEventHandler(async (event) => {
     // Get Redis client
     const { client } = await useRedis()
 
-    // Fetch the task to get initial finance and created date
+    // Fetch the task to get created date
     const taskStr = await client.hGet(TASKS_KEY, taskId)
     if (!taskStr) {
         throw createError({
@@ -47,7 +46,6 @@ export default defineEventHandler(async (event) => {
     }
 
     const task = JSON.parse(taskStr)
-    const initialFinance = task.initialFinance ?? 0
     const taskCreatedAt = task.createdAt ?? Date.now()
 
     // Calculate time range
@@ -55,8 +53,12 @@ export default defineEventHandler(async (event) => {
     const rangeMs = TIME_RANGES[range as keyof typeof TIME_RANGES] ?? 0
     const startTime = rangeMs > 0 ? now - rangeMs : taskCreatedAt
 
-    // Fetch all trades for this task within the time range, sorted by time
-    const matchQuery: any = { taskId }
+    // Fetch all SELL and REDEEM trades for this task within the time range, sorted by time
+    // We count SELL and REDEEM as realized profit/loss
+    const matchQuery: Record<string, unknown> = { 
+        taskId,
+        side: { $in: ['SELL', 'REDEEM'] }
+    }
     if (rangeMs > 0) {
         matchQuery.executedAt = { $gte: startTime }
     }
@@ -65,26 +67,37 @@ export default defineEventHandler(async (event) => {
         .sort({ executedAt: 1 })
         .exec()
 
-    // Build performance history by calculating cumulative realized PnL
+    // Build performance history by calculating cumulative realized profit
+    // SELL and REDEEM: money comes in (usdcAmount = realized profit/loss)
     const performanceHistory: PerformancePoint[] = []
 
     // Start with initial state
-    let cumulativeRealizedPnl = 0
+    let cumulativeProfit = 0
 
-    // If we're filtering by time range, we need to get the starting realized PnL
+    // If we're filtering by time range, we need to get the starting profit
     if (rangeMs > 0) {
         const priorTrades = await TradeRecord.aggregate<{ _id: null; total: number }>([
-            { $match: { taskId, executedAt: { $lt: startTime }, realizedPnl: { $type: 'number' } } },
-            { $group: { _id: null, total: { $sum: '$realizedPnl' } } },
+            { 
+                $match: { 
+                    taskId, 
+                    executedAt: { $lt: startTime },
+                    side: { $in: ['SELL', 'REDEEM'] }
+                } 
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: { $ifNull: ['$usdcAmount', 0] } }
+                }
+            },
         ])
-        cumulativeRealizedPnl = priorTrades[0]?.total ?? 0
+        cumulativeProfit = priorTrades[0]?.total ?? 0
     }
 
     // Add starting point
     performanceHistory.push({
         timestamp: startTime,
-        equity: initialFinance + cumulativeRealizedPnl,
-        realizedPnl: cumulativeRealizedPnl,
+        profit: cumulativeProfit,
     })
 
     // Group trades by time intervals for smoother chart
@@ -101,31 +114,26 @@ export default defineEventHandler(async (event) => {
     }
 
     // Process trades and aggregate by interval
-    const intervalMap = new Map<number, { realizedPnl: number }>()
+    const intervalMap = new Map<number, number>()
 
     for (const trade of trades) {
         const tradeTime = trade.executedAt ?? Date.now()
         const intervalStart = Math.floor(tradeTime / intervalMs) * intervalMs
-        const pnl = trade.realizedPnl ?? 0
+        const usdcAmount = trade.usdcAmount ?? 0
 
-        if (intervalMap.has(intervalStart)) {
-            const existing = intervalMap.get(intervalStart)!
-            existing.realizedPnl += pnl
-        } else {
-            intervalMap.set(intervalStart, { realizedPnl: pnl })
-        }
+        const existing = intervalMap.get(intervalStart) ?? 0
+        intervalMap.set(intervalStart, existing + usdcAmount)
     }
 
     // Sort intervals and build cumulative history
     const sortedIntervals = Array.from(intervalMap.entries()).sort((a, b) => a[0] - b[0])
 
-    for (const [timestamp, data] of sortedIntervals) {
-        cumulativeRealizedPnl += data.realizedPnl
+    for (const [timestamp, intervalProfit] of sortedIntervals) {
+        cumulativeProfit += intervalProfit
 
         performanceHistory.push({
             timestamp,
-            equity: initialFinance + cumulativeRealizedPnl,
-            realizedPnl: cumulativeRealizedPnl,
+            profit: cumulativeProfit,
         })
     }
 
@@ -135,8 +143,7 @@ export default defineEventHandler(async (event) => {
     if (performanceHistory.length === 0 || (lastPoint && lastPoint.timestamp < currentTime - intervalMs)) {
         performanceHistory.push({
             timestamp: currentTime,
-            equity: initialFinance + cumulativeRealizedPnl,
-            realizedPnl: cumulativeRealizedPnl,
+            profit: cumulativeProfit,
         })
     }
 
@@ -153,7 +160,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const labels = performanceHistory.map(p => formatLabel(p.timestamp))
-    const values = performanceHistory.map(p => p.equity)
+    const values = performanceHistory.map(p => p.profit)
 
     return {
         success: true,
@@ -163,8 +170,8 @@ export default defineEventHandler(async (event) => {
             range,
             startTime,
             endTime: now,
-            initialFinance,
-            currentEquity: values[values.length - 1] ?? initialFinance,
+            totalProfit: cumulativeProfit,
         },
     }
 })
+
