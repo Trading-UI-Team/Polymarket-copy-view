@@ -321,6 +321,8 @@ const tradeLimit = 20
 const hasMoreTrades = ref(true)
 const isTradesLoading = ref(false)
 const loadMoreTrigger = ref<HTMLElement | null>(null)
+const totalTrades = ref(0)
+const tradeFilter = ref<'ALL' | 'BUY' | 'SELL' | 'REDEEM'>('ALL')
 let observer: IntersectionObserver | null = null
 
 // Setup IntersectionObserver
@@ -352,6 +354,11 @@ onUnmounted(() => {
   }
 })
 
+// Watch for filter changes
+watch(tradeFilter, () => {
+  fetchMoreTrades(true)
+})
+
 async function fetchMoreTrades(reset = false) {
   if (!taskId.value) return
   if (isTradesLoading.value) return
@@ -369,11 +376,12 @@ async function fetchMoreTrades(reset = false) {
     const response = await $fetch<{
       success: boolean
       data: TradeRecordData[]
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; total: number }
     }>(`/api/tasks/${taskId.value}/trades`, {
       params: {
         page: tradePage.value,
-        limit: tradeLimit
+        limit: tradeLimit,
+        side: tradeFilter.value === 'ALL' ? undefined : tradeFilter.value
       }
     })
     
@@ -385,6 +393,7 @@ async function fetchMoreTrades(reset = false) {
       }
       
       hasMoreTrades.value = response.pagination.hasMore
+      totalTrades.value = response.pagination.total
       tradePage.value++
     }
   } catch (error) {
@@ -881,15 +890,15 @@ function formatTimeAgo(timestamp: number): string {
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Realized Profit/Loss</h3>
               <!-- Time Range Selector -->
-              <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+              <div class="flex items-center gap-1 bg-slate-200 dark:bg-slate-700 rounded-lg p-1 border border-slate-300 dark:border-slate-600">
                 <button
                   v-for="range in (['1D', '1W', 'ALL'] as const)"
                   :key="range"
                   :class="[
-                    'px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200',
+                    'px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 border',
                     selectedRange === range
-                      ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border-slate-300 dark:border-slate-500'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-600 border-transparent'
                   ]"
                   @click="selectedRange = range"
                 >
@@ -1062,7 +1071,23 @@ function formatTimeAgo(timestamp: number): string {
         <!-- Trade History -->
         <div>
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Trade History ({{ tradeList.length }})</h3>
+            <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">Trade History ({{ totalTrades }})</h3>
+            <!-- Filter Selector -->
+            <div class="flex items-center gap-1 bg-slate-200 dark:bg-slate-700 rounded-lg p-1 border border-slate-300 dark:border-slate-600">
+              <button
+                v-for="filter in (['ALL', 'BUY', 'SELL', 'REDEEM'] as const)"
+                :key="filter"
+                :class="[
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 border',
+                  tradeFilter === filter
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border-slate-300 dark:border-slate-500'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-600 border-transparent'
+                ]"
+                @click="tradeFilter = filter"
+              >
+                {{ filter }}
+              </button>
+            </div>
           </div>
           <div class="bg-white dark:bg-slate-800 shadow sm:rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div v-if="tradeList.length > 0" class="max-h-[600px] overflow-y-auto custom-scrollbar">

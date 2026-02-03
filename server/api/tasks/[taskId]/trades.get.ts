@@ -28,14 +28,21 @@ export default defineEventHandler(async (event) => {
     }
 
     const skip = (page - 1) * limit
+    const side = query.side as string | undefined
+
+    // Build query filter
+    const filter: Record<string, unknown> = { taskId }
+    if (side) {
+        filter.side = side
+    }
 
     const [trades, total] = await Promise.all([
-        TradeRecord.find({ taskId })
+        TradeRecord.find(filter)
             .sort({ executedAt: -1 })
             .skip(skip)
             .limit(limit)
             .exec(),
-        TradeRecord.countDocuments({ taskId })
+        TradeRecord.countDocuments(filter)
     ])
 
     const formattedTrades = trades.map((trade) => ({
