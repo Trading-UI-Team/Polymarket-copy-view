@@ -24,6 +24,13 @@ export default defineNuxtConfig({
     adminUsername: '', // Overridden by NUXT_ADMIN_USERNAME
     adminPassword: '', // Overridden by NUXT_ADMIN_PASSWORD
     rpcUrl: 'https://polygon-rpc.com', // Overridden by NUXT_RPC_URL
+    session: {
+      cookie: {
+        // 在開發測試時，如果非 HTTPS 且不是 localhost，可能需要設為 false
+        // 但注意：nuxt-auth-utils 在某些版本會自動處理這個
+        secure: process.env.NODE_ENV === 'production' 
+      }
+    }
   },
 })
 
