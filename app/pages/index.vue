@@ -41,6 +41,7 @@ interface RecentTradeAPIResponse {
   fillSize: number
   realizedPnl?: number
   executedAt: number
+  slug: string
 }
 
 // Loading states
@@ -130,6 +131,7 @@ async function fetchRecentTrades() {
           profile: trade.taskName,
           profileMode: trade.mode,
           market: trade.title,
+          marketSlug: trade.slug,
           action,
           price: `${(trade.fillPrice * 100).toFixed(0)}¢`,
           time: formatTimeAgo(trade.executedAt),

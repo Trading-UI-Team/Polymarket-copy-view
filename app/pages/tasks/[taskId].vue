@@ -1018,7 +1018,17 @@ function formatTimeAgo(timestamp: number): string {
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                       <tr v-for="position in displayedPositions" :key="position.asset">
                         <td class="px-6 py-4">
-                          <div class="text-sm font-medium text-slate-900 dark:text-white whitespace-normal max-w-[200px] md:max-w-[300px] break-words">{{ position.title }}</div>
+                          <div class="text-sm font-medium whitespace-normal max-w-[200px] md:max-w-[300px] break-words">
+                            <a 
+                              v-if="position.slug"
+                              :href="`https://polymarket.com/event/${position.slug}`" 
+                              target="_blank" 
+                              class="text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 border-b border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all"
+                            >
+                              {{ position.title }}
+                            </a>
+                            <span v-else class="text-slate-900 dark:text-white">{{ position.title }}</span>
+                          </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                           <span
@@ -1097,7 +1107,16 @@ function formatTimeAgo(timestamp: number): string {
                     <div class="px-4 py-4 sm:px-6">
                       <div class="flex items-center justify-between">
                         <p class="text-sm font-medium truncate" style="color: #2563EB;">
-                          {{ trade.side }} '{{ trade.outcome || 'Unknown' }}' on "{{ trade.title || 'Unknown Market' }}"
+                          {{ trade.side }} '{{ trade.outcome || 'Unknown' }}' on 
+                          <a 
+                            v-if="trade.slug"
+                            :href="`https://polymarket.com/event/${trade.slug}`" 
+                            target="_blank" 
+                            class="hover:underline"
+                          >
+                            "{{ trade.title || 'Unknown Market' }}"
+                          </a>
+                          <span v-else>"{{ trade.title || 'Unknown Market' }}"</span>
                         </p>
                         <div class="ml-2 flex-shrink-0 flex gap-2">
                           <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">

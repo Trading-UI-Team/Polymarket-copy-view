@@ -7,6 +7,7 @@ export interface Execution {
   action: 'buy-yes' | 'buy-no' | 'sell-yes' | 'sell-no'
   price: string
   time: string
+  marketSlug?: string
 }
 
 const { executions } = defineProps<{
@@ -76,7 +77,15 @@ function getModeColor(mode: Execution['profileMode']): string {
                 </div>
               </td>
               <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
-                {{ execution.market }}
+                <a 
+                  v-if="execution.marketSlug"
+                  :href="`https://polymarket.com/event/${execution.marketSlug}`" 
+                  target="_blank" 
+                  class="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {{ execution.market }}
+                </a>
+                <span v-else>{{ execution.market }}</span>
               </td>
               <td :class="['whitespace-nowrap px-3 py-4 text-sm', getActionColor(execution.action)]">
                 {{ getActionLabel(execution.action) }}
