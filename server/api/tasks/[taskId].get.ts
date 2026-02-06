@@ -1,5 +1,6 @@
 import { connectToMongoDB } from '../../utils/mongodb'
 import { MockPosition } from '../../models/MockPosition'
+import { TradeRecord, type ITradeRecord } from '../../models/TradeRecord'
 import {
     TASKS_KEY,
     type CopyTask,
@@ -97,7 +98,28 @@ export default defineEventHandler(async (event) => {
     // 3. Get summary data using utility
     const summary = await getTaskSummary(task, positions)
 
-    // 4. Format position data for frontend
+    // 4. Calculate win rate and total gas from all trades
+    const allTrades = await TradeRecord.find({ taskId: task.id }).exec();
+    const tradeWithPnl = allTrades.filter((t: ITradeRecord) => t.realizedPnl !== undefined && t.realizedPnl !== null);
+    const wins = tradeWithPnl.filter((t: ITradeRecord) => t.realizedPnl! > 0).length;
+    const totalWins = tradeWithPnl.length;
+    const winRate = totalWins > 0 ? (wins / totalWins) * 100 : 0;
+    const totalGasUsed = allTrades.reduce((sum, t: ITradeRecord) => sum + (t.gasUsed || 0), 0);
+
+    // Fetch POL price for conversion (estimated)
+    let polPrice = 0.45; // Fallback price
+    try {
+        const priceRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=POLUSDT');
+        if (priceRes.ok) {
+            const priceData = await priceRes.json() as { price: string };
+            polPrice = parseFloat(priceData.price);
+        }
+    } catch (error) {
+        console.error('Failed to fetch POL price:', error);
+    }
+    const totalGasUsd = totalGasUsed * polPrice;
+
+    // 5. Format position data for frontend
     const openPositions = summary.pricedPositions.filter((pos) => (pos.size ?? 0) > 0)
     const sortedPositions = [...openPositions].sort((a, b) => {
         const aValue = a.currentValue ?? (a.size || 0) * (a.curPrice || a.avgPrice || 0)
@@ -123,10 +145,10 @@ export default defineEventHandler(async (event) => {
         realizedPnl: pos.realizedPnl ?? 0,
     }))
 
-    const response: TaskDetailResponse = {
+    const response: TaskDetailResponse & { winRate: number; totalGasUsed: number; totalGasUsd: number } = {
         id: task.id,
         name: extractProfileName(task.url),
-        description: `Copying ${task.address.slice(0, 6)}...${task.address.slice(-4)}`,
+        description: `Copying ${task.address}`,
         mode: task.type,
         status: task.status === 'running' ? 'active' : 'paused',
         isVerified: false,
@@ -144,6 +166,9 @@ export default defineEventHandler(async (event) => {
         createdAt: task.createdAt,
         positions: formattedPositions,
         recentTrades,
+        winRate,
+        totalGasUsed,
+        totalGasUsd
     }
 
     return {

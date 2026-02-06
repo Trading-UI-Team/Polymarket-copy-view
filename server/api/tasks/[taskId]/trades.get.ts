@@ -62,6 +62,7 @@ export default defineEventHandler(async (event) => {
         slug: trade.slug || '',
         eventSlug: trade.eventSlug || '',
         outcome: trade.outcome || '',
+        gasUsed: trade.gasUsed,
     }))
 
     return {
