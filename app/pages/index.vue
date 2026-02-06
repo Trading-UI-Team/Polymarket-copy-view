@@ -41,6 +41,7 @@ interface RecentTradeAPIResponse {
   fillSize: number
   realizedPnl?: number
   executedAt: number
+  eventSlug: string
   slug: string
 }
 
@@ -131,7 +132,7 @@ async function fetchRecentTrades() {
           profile: trade.taskName,
           profileMode: trade.mode,
           market: trade.title,
-          marketSlug: trade.slug,
+          marketSlug: trade.eventSlug || trade.slug,
           action,
           price: `${(trade.fillPrice * 100).toFixed(0)}¢`,
           time: formatTimeAgo(trade.executedAt),

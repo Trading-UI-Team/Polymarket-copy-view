@@ -17,7 +17,7 @@ interface TradeData {
     fillSize: number
     realizedPnl?: number
     executedAt: number
-    slug?: string
+    eventSlug?: string
 }
 
 // CopyTask interface (minimal for trade lookup)
@@ -86,7 +86,7 @@ export default defineEventHandler(async () => {
             fillSize: trade.fillSize ?? 0,
             realizedPnl: trade.realizedPnl,
             executedAt: trade.executedAt ?? 0,
-            slug: trade.slug || '',
+            eventSlug: trade.eventSlug || trade.slug || '',
         }
     })
 

@@ -1020,8 +1020,8 @@ function formatTimeAgo(timestamp: number): string {
                         <td class="px-6 py-4">
                           <div class="text-sm font-medium whitespace-normal max-w-[200px] md:max-w-[300px] break-words">
                             <a 
-                              v-if="position.slug"
-                              :href="`https://polymarket.com/event/${position.slug}`" 
+                              v-if="position.eventSlug"
+                              :href="`https://polymarket.com/event/${position.eventSlug}`" 
                               target="_blank" 
                               class="text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 border-b border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all"
                             >
@@ -1109,13 +1109,22 @@ function formatTimeAgo(timestamp: number): string {
                         <p class="text-sm font-medium truncate" style="color: #2563EB;">
                           {{ trade.side }} '{{ trade.outcome || 'Unknown' }}' on 
                           <a 
-                            v-if="trade.slug"
-                            :href="`https://polymarket.com/event/${trade.slug}`" 
+                            v-if="trade.eventSlug"
+                            :href="`https://polymarket.com/event/${trade.eventSlug}`" 
                             target="_blank" 
                             class="hover:underline"
                           >
                             "{{ trade.title || 'Unknown Market' }}"
                           </a>
+                          <span v-else-if="trade.slug">
+                             <a 
+                              :href="`https://polymarket.com/event/${trade.slug}`" 
+                              target="_blank" 
+                              class="hover:underline"
+                            >
+                              "{{ trade.title || 'Unknown Market' }}"
+                            </a>
+                          </span>
                           <span v-else>"{{ trade.title || 'Unknown Market' }}"</span>
                         </p>
                         <div class="ml-2 flex-shrink-0 flex gap-2">
