@@ -39,6 +39,7 @@ interface TradeRecordData {
   slug: string
   eventSlug: string
   outcome: string
+  gasUsed?: number
 }
 
 interface TaskDetail {
@@ -66,6 +67,9 @@ interface TaskDetail {
   builderPassphrase?: string
   positions: PositionData[]
   recentTrades: TradeRecordData[]
+  winRate: number
+  totalGasUsed: number
+  totalGasUsd: number
 }
 
 // Loading states
@@ -162,26 +166,70 @@ watch(selectedRange, () => {
 })
 
 // Chart Data (populated from API)
-const chartData = computed(() => ({
-  labels: performanceData.value.labels.length > 0 
-    ? performanceData.value.labels 
-    : ['Start', 'Current'],
-  datasets: [
-    {
-      label: 'Portfolio Value',
-      data: performanceData.value.values.length > 0 
-        ? performanceData.value.values 
-        : task.value ? [task.value.initialFinance, task.value.equity] : [0, 0],
-      borderColor: '#3B82F6',
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
-      borderWidth: 2,
-      fill: true,
-      tension: 0.4,
-      pointRadius: 3,
-      pointBackgroundColor: '#3B82F6',
-    },
-  ],
-}))
+const chartData = computed(() => {
+  const values = performanceData.value.values.length > 0 
+    ? performanceData.value.values 
+    : task.value ? [task.value.initialFinance, task.value.equity] : [0, 0]
+  
+  return {
+    labels: performanceData.value.labels.length > 0 
+      ? performanceData.value.labels 
+      : ['Start', 'Current'],
+    datasets: [
+      {
+        label: 'Realized P/L',
+        data: values,
+        // Use segment styling for dynamic colors based on value
+        segment: {
+          borderColor: (ctx: any) => {
+            // Get the current and previous point values
+            const currentValue = ctx.p1.parsed.y
+            const prevValue = ctx.p0.parsed.y
+            // Color based on the current point value (where the line is going)
+            if (currentValue >= 0) {
+              return '#10B981' // Green for profit
+            } else {
+              return '#EF4444' // Red for loss
+            }
+          },
+          backgroundColor: (ctx: any) => {
+            const currentValue = ctx.p1.parsed.y
+            if (currentValue >= 0) {
+              return 'rgba(16, 185, 129, 0.1)' // Green fill
+            } else {
+              return 'rgba(239, 68, 68, 0.1)' // Red fill
+            }
+          },
+        },
+        borderColor: (ctx: any) => {
+          // Fallback color for points (use last value to determine)
+          const lastValue = values[values.length - 1] || 0
+          return lastValue >= 0 ? '#10B981' : '#EF4444'
+        },
+        backgroundColor: (ctx: any) => {
+          const lastValue = values[values.length - 1] || 0
+          return lastValue >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+        },
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBorderWidth: 0,
+        pointBackgroundColor: (ctx: any) => {
+          // Color each point based on its value
+          const value = ctx.parsed?.y ?? 0
+          return value >= 0 ? '#10B981' : '#EF4444'
+        },
+        pointHoverRadius: 5,
+        pointHoverBorderWidth: 0,
+        pointHoverBackgroundColor: (ctx: any) => {
+          const value = ctx.parsed?.y ?? 0
+          return value >= 0 ? '#10B981' : '#EF4444'
+        },
+      },
+    ],
+  }
+})
 
 // Chart Options
 const chartOptions = {
@@ -570,6 +618,16 @@ function formatTimeAgo(timestamp: number): string {
   if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
   return `${days} day${days > 1 ? 's' : ''} ago`
 }
+
+async function copyToClipboard(text: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success(`${label} copied to clipboard`)
+  } catch (err) {
+    console.error('Failed to copy text: ', err)
+    toast.error('Failed to copy to clipboard')
+  }
+}
 </script>
 
 <template>
@@ -671,9 +729,26 @@ function formatTimeAgo(timestamp: number): string {
                 {{ task.status === 'active' ? 'Running' : 'Paused' }}
               </span>
             </h2>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {{ task.description }} · Created {{ formatTimeAgo(task.createdAt) }}
-            </p>
+            <div class="mt-2 space-y-1.5">
+              <div class="flex items-center gap-2 group cursor-pointer" @click="copyToClipboard(task.address, 'Trader Address')">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 w-24">Trader:</span>
+                <code class="text-sm font-mono text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 group-hover:text-primary group-hover:border-primary/30 transition-all truncate max-w-xs md:max-w-none">
+                  {{ task.address }}
+                </code>
+                <span class="material-symbols-outlined text-sm text-slate-400 group-hover:text-primary transition-colors">content_copy</span>
+              </div>
+              <div class="flex items-center gap-2 group cursor-pointer" @click="copyToClipboard(task.myWalletAddress, 'My Wallet Address')">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 w-24">My Wallet:</span>
+                <code class="text-sm font-mono text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 group-hover:text-primary group-hover:border-primary/30 transition-all truncate max-w-xs md:max-w-none">
+                  {{ task.myWalletAddress || 'Not Set' }}
+                </code>
+                <span class="material-symbols-outlined text-sm text-slate-400 group-hover:text-primary transition-colors">content_copy</span>
+              </div>
+              <p class="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
+                <span class="material-symbols-outlined text-sm">event</span>
+                Created {{ formatTimeAgo(task.createdAt) }}
+              </p>
+            </div>
           </div>
 
           <!-- Actions -->
@@ -735,7 +810,7 @@ function formatTimeAgo(timestamp: number): string {
         />
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
           <!-- Total PnL -->
           <div class="bg-white dark:bg-slate-800 overflow-hidden shadow rounded-lg border border-slate-200 dark:border-slate-700">
             <div class="p-5">
@@ -761,6 +836,61 @@ function formatTimeAgo(timestamp: number): string {
                   {{ formatPercent((task.pnlAllTime / task.initialFinance) * 100) }}
                 </span>
                 <span class="text-slate-500 dark:text-slate-400"> from initial</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Win Rate -->
+          <div class="bg-white dark:bg-slate-800 overflow-hidden shadow rounded-lg border border-slate-200 dark:border-slate-700">
+            <div class="p-5">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 bg-yellow-100 dark:bg-yellow-900/30 rounded-md p-3">
+                  <span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400">emoji_events</span>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt class="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">Win Rate</dt>
+                    <dd>
+                      <div class="text-lg font-medium text-slate-900 dark:text-white">
+                        {{ task.winRate.toFixed(1) }}%
+                      </div>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/50 px-5 py-3">
+              <div class="text-sm">
+                <span class="text-slate-500 dark:text-slate-400">Consistent performance</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Gas Fee -->
+          <div class="bg-white dark:bg-slate-800 overflow-hidden shadow rounded-lg border border-slate-200 dark:border-slate-700">
+            <div class="p-5">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-100 dark:bg-blue-900/30 rounded-md p-3">
+                  <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">local_gas_station</span>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt class="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">Total Gas Fee</dt>
+                    <dd>
+                      <div class="text-lg font-medium text-slate-900 dark:text-white flex items-baseline gap-2 flex-wrap">
+                        {{ task.totalGasUsed.toFixed(4) }} POL
+                        <span class="text-xs font-normal text-slate-500 dark:text-slate-400">
+                          (≈ {{ task.totalGasUsd.toFixed(2) }} USDT)
+                        </span>
+                      </div>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/50 px-5 py-3">
+              <div class="text-sm">
+                <span class="text-slate-500 dark:text-slate-400">On-chain consumption</span>
               </div>
             </div>
           </div>
@@ -1149,6 +1279,9 @@ function formatTimeAgo(timestamp: number): string {
                           <p class="flex items-center text-sm text-slate-500 dark:text-slate-400">
                             <span class="material-symbols-outlined text-sm mr-1">attach_money</span>
                             Price: {{ (trade.fillPrice * 100).toFixed(0) }}¢ · Size: {{ trade.fillSize.toFixed(2) }}
+                            <span v-if="trade.gasUsed && trade.side === 'REDEEM'" class="ml-2 pl-2 border-l border-slate-300 dark:border-slate-600">
+                              Gas: {{ trade.gasUsed.toFixed(4) }} POL
+                            </span>
                           </p>
                         </div>
                         <div class="mt-2 flex items-center text-sm text-slate-500 dark:text-slate-400 sm:mt-0">

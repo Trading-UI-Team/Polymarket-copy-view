@@ -37,6 +37,7 @@ export interface TradeRecordData {
     slug: string
     eventSlug: string
     outcome: string
+    gasUsed?: number
 }
 
 export function normalizeTask(task: Partial<CopyTask>): CopyTask {
@@ -293,5 +294,6 @@ export async function fetchTrades(task: CopyTask): Promise<TradeRecordData[]> {
         slug: trade.slug || '',
         eventSlug: trade.eventSlug || '',
         outcome: trade.outcome || '',
+        gasUsed: trade.gasUsed,
     }))
 }

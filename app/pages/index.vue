@@ -43,6 +43,7 @@ interface RecentTradeAPIResponse {
   executedAt: number
   eventSlug: string
   slug: string
+  gasUsed?: number
 }
 
 // Loading states
@@ -121,7 +122,9 @@ async function fetchRecentTrades() {
         const side = trade.side?.toLowerCase() || 'buy'
         const outcome = trade.outcome?.toLowerCase() || 'yes'
         
-        if (side === 'buy' || side === 'BUY') {
+        if (side === 'redeem') {
+          action = 'redeem'
+        } else if (side === 'buy') {
           action = outcome.includes('no') ? 'buy-no' : 'buy-yes'
         } else {
           action = outcome.includes('no') ? 'sell-no' : 'sell-yes'
@@ -135,6 +138,7 @@ async function fetchRecentTrades() {
           marketSlug: trade.eventSlug || trade.slug,
           action,
           price: `${(trade.fillPrice * 100).toFixed(0)}¢`,
+          gasUsed: trade.gasUsed,
           time: formatTimeAgo(trade.executedAt),
         }
       })

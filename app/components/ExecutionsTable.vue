@@ -4,10 +4,11 @@ export interface Execution {
   profile: string
   profileMode: 'mock' | 'live'
   market: string
-  action: 'buy-yes' | 'buy-no' | 'sell-yes' | 'sell-no'
+  action: 'buy-yes' | 'buy-no' | 'sell-yes' | 'sell-no' | 'redeem'
   price: string
   time: string
   marketSlug?: string
+  gasUsed?: number
 }
 
 const { executions } = defineProps<{
@@ -16,15 +17,15 @@ const { executions } = defineProps<{
 
 function getActionColor(action: Execution['action']): string {
   if (action.includes('buy')) return 'text-success'
+  if (action === 'redeem') return 'text-primary'
   return 'text-danger'
-}
-
-function getActionLabel(action: Execution['action']): string {
+}function getActionLabel(action: Execution['action']): string {
   const labels: Record<Execution['action'], string> = {
     'buy-yes': 'Buy YES',
     'buy-no': 'Buy NO',
     'sell-yes': 'Sell YES',
     'sell-no': 'Sell NO',
+    'redeem': 'Redeem',
   }
   return labels[action]
 }
@@ -64,6 +65,9 @@ function getModeColor(mode: Execution['profileMode']): string {
                 Price
               </th>
               <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-white">
+                Gas
+              </th>
+              <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-white">
                 Time
               </th>
             </tr>
@@ -92,6 +96,9 @@ function getModeColor(mode: Execution['profileMode']): string {
               </td>
               <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
                 {{ execution.price }}
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
+                {{ (execution.gasUsed && execution.action === 'redeem') ? execution.gasUsed.toFixed(4) + ' POL' : '-' }}
               </td>
               <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
                 {{ execution.time }}

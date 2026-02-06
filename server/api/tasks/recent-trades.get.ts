@@ -18,6 +18,7 @@ interface TradeData {
     realizedPnl?: number
     executedAt: number
     eventSlug?: string
+    gasUsed?: number
 }
 
 // CopyTask interface (minimal for trade lookup)
@@ -87,6 +88,7 @@ export default defineEventHandler(async () => {
             realizedPnl: trade.realizedPnl,
             executedAt: trade.executedAt ?? 0,
             eventSlug: trade.eventSlug || trade.slug || '',
+            gasUsed: trade.gasUsed,
         }
     })
 
