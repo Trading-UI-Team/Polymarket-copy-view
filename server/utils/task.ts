@@ -253,11 +253,24 @@ export async function getTaskSummary(task: CopyTask, positions: (IMockPosition |
         }
     }
 
-    // 4. Calculate PnL and Equity
+    // 4. Calculate PnL from all SELL and REDEEM trades
     const initialFinance = task.initialFinance ?? 0
     const equity = currentBalance + stats.totalPositionValue
-    const totalPnl = equity - initialFinance
-    const realizedPnl = currentBalance + stats.totalCostBasis - initialFinance
+
+    // Query TradeRecord for all SELL and REDEEM trades with realizedPnl
+    const allTrades = await TradeRecord.find({
+        taskId: task.id,
+        side: { $in: ['SELL', 'REDEEM'] },
+        realizedPnl: { $exists: true, $ne: null }
+    }).exec()
+
+    // Sum up the realizedPnl from SELL and REDEEM trades
+    const realizedPnl = allTrades.reduce((sum, trade) => {
+        return sum + (trade.realizedPnl ?? 0)
+    }, 0)
+
+    // Total PnL = Realized PnL (from SELL/REDEEM) + Unrealized PnL (from open positions)
+    const totalPnl = realizedPnl + stats.unrealizedPnl
 
     return {
         currentBalance,
