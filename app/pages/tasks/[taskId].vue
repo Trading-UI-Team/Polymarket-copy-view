@@ -486,6 +486,74 @@ async function toggleBotStatus() {
   }
 }
 
+// Close Position
+const isClosingPosition = ref(false)
+const closingPositionAsset = ref<string | null>(null)
+const closingPositionTitle = ref('')
+const showConfirmClosePosition = ref(false)
+const pendingClosePosition = ref<PositionData | null>(null)
+
+const isClosingAll = ref(false)
+const showConfirmCloseAll = ref(false)
+
+function closePosition(position: PositionData) {
+  pendingClosePosition.value = position
+  closingPositionTitle.value = position.title
+  showConfirmClosePosition.value = true
+}
+
+async function handleConfirmClosePosition() {
+  const position = pendingClosePosition.value
+  if (!task.value || !position) return
+
+  isClosingPosition.value = true
+  closingPositionAsset.value = position.asset
+  try {
+    const response = await $fetch<{ success: boolean; data: any }>('/api/traders/close-position', {
+      method: 'POST',
+      body: { taskId: task.value.id, asset: position.asset }
+    })
+    if (response.success) {
+      const received = response.data?.received ?? 0
+      toast.success(`Position closed — received ${formatCurrency(received)}`)
+      await fetchTaskDetail(true)
+    }
+  } catch (error: any) {
+    console.error('Failed to close position:', error)
+    toast.error(error.data?.message || error.message || 'Failed to close position')
+  } finally {
+    isClosingPosition.value = false
+    closingPositionAsset.value = null
+    pendingClosePosition.value = null
+  }
+}
+
+function closeAllPositions() {
+  showConfirmCloseAll.value = true
+}
+
+async function handleConfirmCloseAll() {
+  if (!task.value) return
+
+  isClosingAll.value = true
+  try {
+    const response = await $fetch<{ success: boolean; data: any }>('/api/traders/close-all-positions', {
+      method: 'POST',
+      body: { taskId: task.value.id }
+    })
+    if (response.success) {
+      const { closedCount = 0, totalReceived = 0 } = response.data ?? {}
+      toast.success(`Closed ${closedCount} position${closedCount !== 1 ? 's' : ''} — received ${formatCurrency(totalReceived)}`)
+      await fetchTaskDetail(true)
+    }
+  } catch (error: any) {
+    console.error('Failed to close all positions:', error)
+    toast.error(error.data?.message || error.message || 'Failed to close all positions')
+  } finally {
+    isClosingAll.value = false
+  }
+}
+
 // Confirm Dialog
 const showConfirmDelete = ref(false)
 const isDeleting = ref(false)
@@ -799,7 +867,7 @@ async function copyToClipboard(text: string, label: string) {
           @update="handleUpdateTrader"
         />
 
-        <!-- Confirm Dialog -->
+        <!-- Confirm Dialog - Delete -->
         <ConfirmDialog
           v-model:is-open="showConfirmDelete"
           title="Delete Trader Bot"
@@ -807,6 +875,26 @@ async function copyToClipboard(text: string, label: string) {
           type="danger"
           confirm-text="Delete"
           @confirm="handleConfirmDelete"
+        />
+
+        <!-- Confirm Dialog - Close Position -->
+        <ConfirmDialog
+          v-model:is-open="showConfirmClosePosition"
+          title="Close Position"
+          :message="`Are you sure you want to close your position on &quot;${closingPositionTitle}&quot;? This will sell all shares at the current market price.`"
+          type="warning"
+          confirm-text="Close Position"
+          @confirm="handleConfirmClosePosition"
+        />
+
+        <!-- Confirm Dialog - Close All Positions -->
+        <ConfirmDialog
+          v-model:is-open="showConfirmCloseAll"
+          title="Close All Positions"
+          :message="`Are you sure you want to close all ${task.positions.length} open positions? This will sell all shares at current market prices.`"
+          type="danger"
+          confirm-text="Close All"
+          @confirm="handleConfirmCloseAll"
         />
 
         <!-- Stats Cards -->
@@ -1051,9 +1139,21 @@ async function copyToClipboard(text: string, label: string) {
 
         <!-- Current Positions Table -->
         <div id="current-positions" class="mb-8">
-          <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white mb-4">
-            Current Positions ({{ task.positions.length }})
-          </h3>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white">
+              Current Positions ({{ task.positions.length }})
+            </h3>
+            <button
+              v-if="task.positions.length > 0"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium rounded-md shadow-sm border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isClosingAll || isClosingPosition"
+              @click="closeAllPositions"
+            >
+              <span v-if="isClosingAll" class="material-symbols-outlined text-base animate-spin">progress_activity</span>
+              Close All
+            </button>
+          </div>
           <div class="shadow border border-slate-200 dark:border-slate-700 sm:rounded-lg overflow-hidden w-full">
                   <div v-if="task.positions.length > 0" class="max-h-[500px] overflow-y-auto overflow-x-auto md:overflow-x-hidden custom-scrollbar">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -1131,8 +1231,8 @@ async function copyToClipboard(text: string, label: string) {
                             </span>
                           </div>
                         </th>
-                        <th 
-                          scope="col" 
+                        <th
+                          scope="col"
                           class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 select-none"
                           @click="toggleSort('cashPnl')"
                         >
@@ -1142,6 +1242,12 @@ async function copyToClipboard(text: string, label: string) {
                               {{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                             </span>
                           </div>
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider select-none"
+                        >
+                          Action
                         </th>
                       </tr>
                     </thead>
@@ -1196,6 +1302,17 @@ async function copyToClipboard(text: string, label: string) {
                               ({{ formatPercent(position.percentPnl) }})
                             </span>
                           </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="isClosingPosition || isClosingAll"
+                            @click="closePosition(position)"
+                          >
+                            <span v-if="isClosingPosition && closingPositionAsset === position.asset" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                            Close
+                          </button>
                         </td>
                       </tr>
                     </tbody>
